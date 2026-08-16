@@ -1,0 +1,705 @@
+<title>VAB Content Library 対応</title>
+
+<style>
+  :root {
+    --ground:      #f6f6f4;
+    --surface:     #ffffff;
+    --surface-alt: #eeeeea;
+    --ink:         #1b1f26;
+    --muted:       #5c636f;
+    --line:        #d8d8d2;
+    --line-soft:   #e6e6e1;
+    --accent:      #0f766e;
+    --accent-ink:  #0b5a54;
+    --accent-wash: #e2efed;
+    --store:       #6b7280;
+    --local:       #a1590a;
+    --fs:          #0f766e;
+    --warn-wash:   #f8f0e2;
+    --warn-line:   #dcc08a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #14181e;
+      --surface:     #1b212a;
+      --surface-alt: #222a35;
+      --ink:         #e4e7ec;
+      --muted:       #98a1af;
+      --line:        #2e3742;
+      --line-soft:   #262e38;
+      --accent:      #46b3a6;
+      --accent-ink:  #6fc9be;
+      --accent-wash: #1a2e2e;
+      --store:       #909aa8;
+      --local:       #d99a4e;
+      --fs:          #46b3a6;
+      --warn-wash:   #2a2418;
+      --warn-line:   #5c4a26;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #14181e;
+    --surface:     #1b212a;
+    --surface-alt: #222a35;
+    --ink:         #e4e7ec;
+    --muted:       #98a1af;
+    --line:        #2e3742;
+    --line-soft:   #262e38;
+    --accent:      #46b3a6;
+    --accent-ink:  #6fc9be;
+    --accent-wash: #1a2e2e;
+    --store:       #909aa8;
+    --local:       #d99a4e;
+    --fs:          #46b3a6;
+    --warn-wash:   #2a2418;
+    --warn-line:   #5c4a26;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Georgia, "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 16.5px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sans {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  }
+
+  code, kbd, .mono {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.86em;
+  }
+
+  code {
+    background: var(--surface-alt);
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+  }
+
+  pre {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    padding: 0.9rem 1.1rem;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  pre code { background: none; padding: 0; }
+
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ── Shell ─────────────────────────────────────────── */
+
+  .shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  @media (min-width: 1020px) {
+    .shell {
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 4rem;
+      padding-top: 4.5rem;
+    }
+    .rail { position: sticky; top: 2.5rem; align-self: start; }
+  }
+
+  .rail { font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+  .rail nav { display: flex; flex-direction: column; gap: 0.15rem; }
+  .rail a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.82rem;
+    padding: 0.22rem 0;
+    border-bottom: 1px solid transparent;
+  }
+  .rail a:hover { color: var(--accent-ink); border-bottom-color: var(--line); }
+
+  .eyebrow {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.6rem;
+  }
+
+  /* ── Masthead ──────────────────────────────────────── */
+
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 1.6rem; margin-bottom: 2.5rem; }
+
+  h1 {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: clamp(1.9rem, 4.2vw, 2.7rem);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+    margin: 0 0 0.7rem;
+  }
+
+  .standfirst { font-size: 1.06rem; color: var(--muted); margin: 0; max-width: 62ch; }
+
+  .meta {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    margin-top: 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.4rem;
+  }
+
+  /* ── Sections ──────────────────────────────────────── */
+
+  section { margin-bottom: 3.4rem; scroll-margin-top: 2rem; }
+
+  h2 {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 1.32rem;
+    font-weight: 640;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 1.1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  h3 {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 0.97rem;
+    font-weight: 640;
+    margin: 2rem 0 0.6rem;
+  }
+
+  p { margin: 0 0 1rem; max-width: 68ch; }
+  ul, ol { max-width: 68ch; padding-left: 1.3rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.45rem; }
+  li::marker { color: var(--muted); }
+
+  /* ── Status cards ──────────────────────────────────── */
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+
+  .card { background: var(--surface); padding: 1rem 1.1rem; }
+
+  .card .k {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .card .v {
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 1.5rem;
+    font-weight: 640;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    display: block;
+  }
+
+  .card .v.small { font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word; }
+  .card .sub { font-size: 0.76rem; color: var(--muted); font-family: system-ui, sans-serif; }
+
+  /* ── Tables ────────────────────────────────────────── */
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); margin-bottom: 1.3rem; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 520px;
+    background: var(--surface);
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 0.87rem;
+  }
+
+  th, td { text-align: left; padding: 0.62rem 0.9rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-weight: 640; font-size: 0.71rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--surface-alt); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .mono, th .mono { font-size: 0.84em; }
+
+  /* ── Source chips ──────────────────────────────────── */
+
+  .chip {
+    display: inline-block;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.73rem;
+    padding: 0.08em 0.5em;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .chip.store { color: var(--store); }
+  .chip.local { color: var(--local); }
+  .chip.fs    { color: var(--fs); }
+
+  /* ── Callout ───────────────────────────────────────── */
+
+  .note {
+    background: var(--warn-wash);
+    border: 1px solid var(--warn-line);
+    padding: 0.9rem 1.1rem;
+    margin: 0 0 1.3rem;
+    max-width: 68ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .eyebrow { color: var(--ink); opacity: 0.72; }
+
+  /* ── Steps (ordered — real sequence) ───────────────── */
+
+  ol.steps { list-style: none; padding-left: 0; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.2rem;
+    margin-bottom: 1rem;
+  }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.74rem;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    width: 1.5rem;
+    height: 1.5rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+  }
+
+  .stack { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.3rem; }
+
+  details {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.7rem 1rem;
+  }
+  summary {
+    cursor: pointer;
+    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  details[open] summary { margin-bottom: 0.7rem; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 1.2rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-family: system-ui, sans-serif;
+  }
+</style>
+
+<div class="shell">
+
+  <aside class="rail">
+    <p class="eyebrow">目次</p>
+    <nav>
+      <a href="#state">現在の状態</a>
+      <a href="#problem">何が問題だったか</a>
+      <a href="#design">何を作ったか</a>
+      <a href="#bugs">途中で直した既存バグ</a>
+      <a href="#verify">検証したこと</a>
+      <a href="#repo">リポジトリと環境</a>
+      <a href="#open">未着手・判断待ち</a>
+      <a href="#resume">再開手順</a>
+      <a href="#commands">コマンド早見表</a>
+    </nav>
+  </aside>
+
+  <main>
+
+    <header class="masthead">
+      <p class="eyebrow">引き継ぎ</p>
+      <h1>DAZ Studio の Content Library を VAB に取り込む</h1>
+      <p class="standfirst">
+        Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。
+      </p>
+      <div class="meta">
+        <span>2026-08-16 &ndash; 08-17</span>
+        <span class="mono">feature/content-library-indexing</span>
+        <span class="mono">6377a05</span>
+      </div>
+    </header>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="state">
+      <h2>現在の状態</h2>
+
+      <div class="cards">
+        <div class="card">
+          <span class="k">インデックス済み</span>
+          <span class="v">3,239</span>
+          <span class="sub">作業前 1,620</span>
+        </div>
+        <div class="card">
+          <span class="k">新規に見えた製品</span>
+          <span class="v">1,619</span>
+          <span class="sub">cms-local 43 / filesystem 1,576</span>
+        </div>
+        <div class="card">
+          <span class="k">テスト</span>
+          <span class="v">41 / 41</span>
+          <span class="sub">全て green</span>
+        </div>
+        <div class="card">
+          <span class="k">push</span>
+          <span class="v small">fork へ完了</span>
+          <span class="sub">tbtomo/daz-content-browser</span>
+        </div>
+      </div>
+
+      <p>
+        作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 3 コミットが載っており、すべて fork に push 済み。UI は一切改造していない（理由は<a href="#design">次節</a>）。
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="problem">
+      <h2>何が問題だったか</h2>
+
+      <p>
+        パイプライン全体が <strong>DAZ ストアの SKU をキーにしていた</strong>。<code>daz_db_analyzer.get_all_skus()</code> が <code>WHERE token IS NOT NULL AND token != ''</code> で絞っていたため、SKU を持たないコンテンツは PostgreSQL &rarr; SQLite &rarr; ChromaDB のどこにも入らなかった。
+      </p>
+
+      <p>
+        DAZ Studio の <strong>Smart Content</strong> ペインは CMS データベースが実体で、<strong>Content Library</strong> ペインはコンテンツディレクトリの生のフォルダツリー。つまり後者にしか現れないものが丸ごと欠落していた。実 CMS・実ライブラリに接続して測った結果:
+      </p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>ギャップ</th><th>実測</th><th>備考</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CMS にはあるが <code>token</code> が空の製品</td>
+              <td class="num">43 製品</td>
+              <td>Renderosity 等の他社製品</td>
+            </tr>
+            <tr>
+              <td>CMS に登録すら無いディスク上のファイル</td>
+              <td class="num">109,127 件</td>
+              <td>ユーザ向けファイル 264,162 件中 41%、9,814 ディレクトリ</td>
+            </tr>
+            <tr>
+              <td>Poser 形式ライブラリ 2 ルート</td>
+              <td class="num">.duf 0 件</td>
+              <td>中身は <code>.pz2</code>/<code>.cr2</code>/<code>.pp2</code>。CMS にも <code>.pz2</code> は 1,047 件のみ</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p class="eyebrow">設計上の制約</p>
+        <p>
+          <code>ui/src</code> は未チェックアウトの git submodule（<span class="mono">bmf-daz-content-browser-ui</span>）で、手元にはビルド済みの <code>ui/dist</code> しか無い。<strong>UI 改造ゼロで成立させること</strong>が前提条件になった。結果として「合成 SKU で通常製品と同じ行を作る」方針を採っている。
+        </p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="design">
+      <h2>何を作ったか</h2>
+
+      <p>
+        SQLite の製品行に <code>source</code> 列を足し、3 系統を同一スキーマに正規化した。合成 SKU を使うので、既存の一覧・検索・フィルタ・サムネイル導線がそのまま動く。
+      </p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>source</th><th>SKU 形式</th><th>由来</th><th>画像</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="chip store">daz-store</span></td>
+              <td class="mono">DAZ token</td>
+              <td>従来どおり。daz3d.com をスクレイプ</td>
+              <td>ストアの CDN</td>
+            </tr>
+            <tr>
+              <td><span class="chip local">cms-local</span></td>
+              <td class="mono">cms-&lt;product.id&gt;</td>
+              <td>CMS にあるがストア SKU 無し</td>
+              <td>ディスク上の隣接 PNG</td>
+            </tr>
+            <tr>
+              <td><span class="chip fs">filesystem</span></td>
+              <td class="mono">fs-&lt;sha1&gt;</td>
+              <td>CMS に無い。ディスク走査で発見</td>
+              <td>ディスク上の隣接 PNG</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        ストアページが無い製品は、DAZ Studio がアセット横に書く PNG をサムネイルにし、<code>/api/v1/assets/thumbnail</code> 経由で配信する。<code>_format_product()</code> が <code>image_url</code> を組み立てるので、UI から見れば通常の製品と区別がつかない。
+      </p>
+
+      <h3>パイプラインのフェーズ</h3>
+
+      <p>
+        <code>--phase</code> に <code>scan</code> を追加した。<code>all</code>（既定）は <span class="mono">etl &rarr; scan &rarr; embed</span> の順に実行する。WebUI の Update ボタンは <code>run_update_flow</code> 経由で <code>phase='all'</code> を呼ぶので、<strong>ボタン 1 つで全部走る</strong>。
+      </p>
+
+      <h3>ファイルシステム走査の要点</h3>
+
+      <ul>
+        <li><strong>対象拡張子</strong> — <code>.duf</code> に加え Poser 形式 10 種。Poser 形式は <code>Runtime/Libraries/**</code> 配下に限定。<code>data/</code> は除外。</li>
+        <li><strong>入れ子ルートの除去</strong> — このマシンでは <code>My Library</code> とその配下 3 ディレクトリが両方 root 登録されていた。最も浅いものだけ残さないと二重カウントになる。</li>
+        <li><strong>ラッパーディレクトリの除去</strong> — 同じ製品が「ルートに統合して展開」と「アーカイブのフォルダごと展開」で二重に入っているケースが多数あった。CMS の正規トップレベル名を使って剥がし、1 製品に畳んでいる（これで 2,933 &rarr; 1,580 製品）。</li>
+        <li><strong>SKU の安定性</strong> — SKU はパスそのものではなくラッパー除去後の相対パスから作る。片方のコピーを消しても SKU が変わらない。</li>
+      </ul>
+
+      <h3>主なファイル</h3>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">src/managers/filesystem_scanner.py</td><td><strong>新規。</strong>走査・グルーピング・製品行生成。約 700 行</td></tr>
+            <tr><td class="mono">src/managers/daz_db_analyzer.py</td><td><code>SKU_EXPR</code> の導入。合成 SKU で CMS を引く</td></tr>
+            <tr><td class="mono">src/managers/postgres_db_manager.py</td><td>scan フェーズ、スクレイプの分岐、サムネイル解決</td></tr>
+            <tr><td class="mono">src/managers/sqlite_db_manager.py</td><td><code>source</code> / <code>content_dirs</code> / <code>thumbnail_path</code> 列の追加</td></tr>
+            <tr><td class="mono">src/server.py</td><td>サムネイル URL 合成、fs 製品のアセット列挙、フォルダで開く導線</td></tr>
+            <tr><td class="mono">src/managers/daz_script_server.py</td><td><code>browse-folder</code> スクリプトの追加</td></tr>
+            <tr><td class="mono">analyze_content_roots.py</td><td>新モジュールの薄い CLI ラッパに変更。ヒューリスティック調整用</td></tr>
+            <tr><td class="mono">tests/test_filesystem_scanner.py</td><td><strong>新規。</strong>12 テスト</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="bugs">
+      <h2>途中で直した既存バグ</h2>
+
+      <p>今回の機能追加とは独立に、元から存在していた不具合を 3 件踏んだので直してある。上流にも同じ問題がある。</p>
+
+      <div class="stack">
+        <details open>
+          <summary>サムネイル API がルート順で潰されていた</summary>
+          <p>
+            <code>/api/v1/assets/thumbnail</code> が <code>/api/v1/assets/{sku}</code> より<strong>後に</strong>宣言されていた。FastAPI は宣言順にマッチするため、全てのサムネイル要求がアセット一覧エンドポイントに流れ、画像ではなく <code>{"sku":"thumbnail","files":[]}</code> を返していた。ストア製品は CDN 画像を使うため露見していなかったが、ローカルサムネイルはこれに依存するので致命的。宣言順を入れ替えて解決。
+          </p>
+        </details>
+
+        <details>
+          <summary>グルーピングが O(n²) で完走しなかった</summary>
+          <p>
+            <code>merge_into_ancestors()</code> はマージのたびに全ルートを再走査する実装で、未登録 9,814 ディレクトリでは 10 分回しても終わらなかった。パスをトライ木に入れてボトムアップに 1 度だけ走査する方式に書き直し、<strong>約 2 秒</strong>になった。判定基準（深さ・カテゴリ語の除外）は元の実装と同じ。
+          </p>
+        </details>
+
+        <details>
+          <summary>cp932 コンソールでインデックス処理ごと落ちる</summary>
+          <p>
+            rich の進捗スピナーが使う点字文字を cp932 が encode できず <code>UnicodeEncodeError</code> で異常終了していた。製品名の en dash でも同様。CLI 起動時に stdout/stderr を <code>errors="replace"</code> で再構成して回避。
+          </p>
+        </details>
+      </div>
+
+      <p>
+        このほか、<code>SKU_EXPR</code> をそのまま <code>WHERE</code> に使うと <code>dzcontent.content</code>（70 万行）の全走査になるため、アセット取得は <code>p.token</code> / <code>p.id</code> という索引の効く列で引くようにしてある。製品詳細を開くたびに全走査、という事態は避けられている（実測 0.02 秒）。
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="verify">
+      <h2>検証したこと</h2>
+
+      <ul>
+        <li><strong>テスト</strong> — <code>pytest tests/</code> 41 件 green（新規 12 件を含む）。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認。</li>
+        <li><strong>実データでの ETL</strong> — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決。</li>
+        <li><strong>実データでの走査</strong> — filesystem 1,576 製品を登録。1,542 件（98%）にサムネイルあり。</li>
+        <li><strong>API</strong> — <code>/info</code> の内訳、意味検索でローカル製品がヒットすること、<code>/assets/{sku}</code> が fs 製品でディスクからファイルを返すこと、サムネイルが実 PNG（HTTP 200 / image&#47;png）で返ることを確認。</li>
+        <li><strong>UI</strong> — ブラウザで表示確認。UI 無改造のまま 3,239 製品が実サムネイル付きで並ぶ。</li>
+        <li><strong>Update ボタン</strong> — <code>POST /api/v1/update</code> を実際に叩き、etl &rarr; scan &rarr; embed が走り差分 0 件で正常終了することを確認。走査中の進捗表示も追加後に再確認済み。</li>
+        <li><strong>DAZ Studio 連携</strong> — Script Server 2.9.0 稼働中に <code>browse-folder</code> を実行し成功。実在したメソッドは <code>browseToPath</code>（<code>browseToFolder</code>/<code>browseToDir</code> は存在せず、候補を並べたフォールバックが効いた）。</li>
+      </ul>
+
+      <div class="note">
+        <p class="eyebrow">目視未確認</p>
+        <p>
+          <code>browse-folder</code> は API が成功を返したところまで確認済み。DAZ Studio の Content Library ペインが実際に該当フォルダへ移動したかは画面が見えないため未確認。気になる場合は fs 製品で「開く」を押して確認されたい。
+        </p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="repo">
+      <h2>リポジトリと環境</h2>
+
+      <h3>git remote</h3>
+
+      <p>
+        元は上流本家をそのまま <code>origin</code> にしていたため push できなかった。fork を作って張り替えてある。
+      </p>
+
+      <pre><code>origin    https://github.com/tbtomo/daz-content-browser.git        ← fork (public)
+upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家 (AGPL-3.0)</code></pre>
+
+      <p>
+        <code>main</code> と作業ブランチはどちらも <code>origin</code>（fork）を追跡する。<code>git push upstream</code> は権限が無いので失敗する。
+      </p>
+
+      <h3>コミット</h3>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>SHA</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">46602c2</td><td>Content Library の取り込み本体</td></tr>
+            <tr><td class="mono">78bbba3</td><td>CLAUDE.md に bd 不使用の注記</td></tr>
+            <tr><td class="mono">6377a05</td><td>走査中の進捗表示</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>環境で注意すべき点</h3>
+
+      <ul>
+        <li>
+          <strong><code>.venv</code> に pytest と httpx を追加インストールした。</strong><code>pyproject.toml</code> の依存には入っていない。テスト実行に必要だったため。不要なら <code>pip uninstall pytest httpx</code> で戻せる。
+        </li>
+        <li>
+          <strong><code>bd</code>（beads）は使わない。</strong>未インストールで、<code>.beads/</code> の課題は上流メンテナのもの。<code>CLAUDE.md</code> 冒頭の「Local overrides」節に明記済み（自動生成ブロックの外側なので再生成で消えない）。
+        </li>
+        <li>
+          <strong><code>.env</code> の <code>DAZ_STUDIO_EXE_PATH=CHANGEME</code> は未設定のまま。</strong>元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック（DAZ Studio を起動して製品を開く）は機能しない。
+        </li>
+      </ul>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="open">
+      <h2>未着手・判断待ち</h2>
+
+      <h3>判断待ち</h3>
+
+      <ul>
+        <li>
+          <strong>上流への PR を出すか。</strong>fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグとグルーピングの O(n²) 問題。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する。
+        </li>
+        <li>
+          <strong>fork に残っている上流のブランチ 7 本。</strong><code>feature/jit-morph-loader</code> 等。上流に追随しないなら削除してよい。
+        </li>
+      </ul>
+
+      <h3>既知の限界</h3>
+
+      <ul>
+        <li>
+          <strong>グルーピングの過剰マージが 4 件。</strong>ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は <span class="mono">Thunder-3D</span> の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>（既定 5）で調整できる。
+        </li>
+        <li>
+          <strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong>片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える。
+        </li>
+        <li>
+          <strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong><code>ui/src</code> が未チェックアウトのため。差分実行（<code>force: false</code>）で動くことは API 経由で確認済み。
+        </li>
+        <li>
+          <strong>UI 自体は未改造。</strong><code>source</code> は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる。
+        </li>
+      </ul>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="resume">
+      <h2>再開手順</h2>
+
+      <ol class="steps">
+        <li>
+          <code>cd D:\OtherApps\daz-content-browser</code> して <code>git status</code>。<code>feature/content-library-indexing</code> にいるはず。
+        </li>
+        <li>
+          DAZ Studio と PostgreSQL CMS が動いていることを確認（CMS は DAZ Studio が管理している）。
+        </li>
+        <li>
+          <code>make dev-server</code> でサーバ起動。<code>http://localhost:8000</code> に 3,239 製品が並べば前回の状態を再現できている。
+        </li>
+        <li>
+          コンテンツを追加した場合は UI の Update ボタン、または <code>python vab.py load</code>。どちらも同じ処理。
+        </li>
+      </ol>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="commands">
+      <h2>コマンド早見表</h2>
+
+      <div class="stack">
+        <div>
+          <p class="eyebrow">インデックス</p>
+          <pre><code>python vab.py load                 # etl → scan → embed（差分）
+python vab.py load --phase scan    # Content Library 走査のみ
+python vab.py load --phase etl     # CMS 製品のみ
+python vab.py load --force         # 全再構築</code></pre>
+        </div>
+
+        <div>
+          <p class="eyebrow">ヒューリスティックの調整</p>
+          <pre><code>python analyze_content_roots.py --show-dirs
+# .env の SCAN_MIN_PRODUCT_DEPTH（既定 5）で粒度を変える</code></pre>
+        </div>
+
+        <div>
+          <p class="eyebrow">テストとサーバ</p>
+          <pre><code>.venv\Scripts\python -m pytest tests\ -v
+make dev-server      # 本番モード
+make demo-server     # デモモード（DB 不要）</code></pre>
+        </div>
+
+        <div>
+          <p class="eyebrow">状態の確認</p>
+          <pre><code>curl -s http://localhost:8000/api/v1/info
+# products_by_source に 3 系統の内訳が出る</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      作業記録 &middot; 2026-08-16 &ndash; 08-17 &middot; リポジトリ <span class="mono">D:\OtherApps\daz-content-browser</span>
+    </footer>
+
+  </main>
+</div>
