@@ -2,6 +2,14 @@
 
 This file provides instructions and context for AI coding agents working on this project.
 
+## Local overrides (this clone)
+
+These take precedence over the sections below, which came from the upstream repository.
+
+- **Do not use `bd` (beads).** It is not installed here, and the issues in `.beads/`
+  belong to the upstream maintainer, not to this clone. Track work in the conversation
+  instead; do not try to install it or work around its absence.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
 
