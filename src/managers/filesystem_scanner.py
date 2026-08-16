@@ -301,12 +301,14 @@ def canonical_top_levels(tracked) -> set:
     return tops
 
 
-def collect_untracked_dirs(roots, tracked) -> dict:
+def collect_untracked_dirs(roots, tracked, on_root_done=None) -> dict:
     """Walks the roots and returns per-directory tracked/untracked file statistics.
 
     Args:
         roots (list[Path]): Deduplicated content roots.
         tracked (set): Output of load_tracked_files().
+        on_root_done (callable, optional): Called as on_root_done(root) after each
+            root is walked, so callers can report progress on a slow scan.
 
     Returns:
         dict: {Path(dir): {'root': Path, 'tracked': int, 'untracked': int,
@@ -332,6 +334,8 @@ def collect_untracked_dirs(roots, tracked) -> dict:
                 entry["untracked"] += 1
                 entry["files"].append(file)
         logger.info(f"  {count:,} user-facing files")
+        if on_root_done:
+            on_root_done(root)
 
     return {d: v for d, v in stats.items() if v["untracked"] > 0 and v["tracked"] == 0}
 
@@ -510,12 +514,15 @@ def group_into_products(merged, content_roots, top_levels=None) -> list:
 
 # ─── Top-level scan ────────────────────────────────────────────────────────────
 
-def scan(analyzer, roots=None) -> list:
+def scan(analyzer, roots=None, on_progress=None) -> list:
     """Scans the content roots and returns inferred products not tracked by the CMS.
 
     Args:
         analyzer: DazDBAnalyzer instance (for content roots and tracked files).
         roots (list, optional): Override the content roots to scan.
+        on_progress (callable, optional): on_progress(stage, current, total, detail).
+            Walking a large library takes a minute with nothing else to report, so
+            this fires per phase and per content root to keep callers' UI alive.
 
     Returns:
         list[dict]: Product dicts as produced by group_into_products().
@@ -525,12 +532,29 @@ def scan(analyzer, roots=None) -> list:
         logger.warning("No accessible content roots — nothing to scan.")
         return []
 
+    # One step for the CMS index load, one per content root, one for grouping.
+    total_steps = len(content_roots) + 2
+    step = 0
+
+    def report(detail):
+        nonlocal step
+        step += 1
+        if on_progress:
+            on_progress("scan", step, total_steps, detail)
+
+    if on_progress:
+        on_progress("scan", 0, total_steps, "reading CMS file index")
     tracked = load_tracked_files(analyzer)
-    dir_stats = collect_untracked_dirs(content_roots, tracked)
+    report("reading CMS file index")
+
+    dir_stats = collect_untracked_dirs(
+        content_roots, tracked, on_root_done=lambda root: report(f"scanned {root.name}")
+    )
     logger.info(f"{len(dir_stats):,} directories hold untracked content.")
 
     merged = merge_into_ancestors(dir_stats, content_roots)
     products = group_into_products(merged, content_roots, canonical_top_levels(tracked))
+    report("grouping products")
     logger.info(f"Grouped into {len(products):,} filesystem products.")
 
     # Attach the untracked files themselves so callers can pick a thumbnail without

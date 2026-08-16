@@ -432,7 +432,7 @@ def run_filesystem_scan(args, on_progress=None, cancel_check=None) -> list:
         return []
 
     logger.info("Filesystem scan: looking for content not registered in the DAZ CMS…")
-    products = filesystem_scanner.scan(daz_pg_analyzer)
+    products = filesystem_scanner.scan(daz_pg_analyzer, on_progress=on_progress)
     if not products:
         return []
 
@@ -460,7 +460,7 @@ def run_filesystem_scan(args, on_progress=None, cancel_check=None) -> list:
         else:
             logger.warning(f"SQLite insert failed for filesystem product {row['name']!r}.")
         if on_progress:
-            on_progress("scan", i, total, row["name"])
+            on_progress("scan", i, total, f"indexing {row['name']}")
 
     logger.info(f"Filesystem scan complete. {len(written)} product(s) written to SQLite.")
     return written
