@@ -19,6 +19,7 @@ The server is the product. A web UI is included as a reference client and demons
 - **Hybrid filtering** — combine a semantic query with hard filters on category, artist, and compatible figure
 - **Full product index** — browsable paginated catalogue with sorting and filtering
 - **DAZ Studio integration** — open products in the Content Library, load assets into scenes, and read content directories from a running DAZ Studio instance via the DAZ Script Server plugin
+- **Full library coverage** — indexes Smart Content products *and* Content-Library-only content: third-party installs with no DAZ SKU, and files unzipped straight into a content directory with no CMS record
 - **Incremental indexing** — tracks what's already indexed; re-runs only process new products
 - **Demo mode** — runs with mock data and no database, useful for UI development and trying the interface
 - **Web UI** — a reference browser client served at `/` when `ui/dist/` is present
@@ -127,13 +128,40 @@ The DAZ CMS database is installed and managed by DAZ Studio — you do not need 
 python vab.py load
 ```
 
-Pulls products from the DAZ CMS database, generates embeddings, and stores everything in the local SQLite + ChromaDB index. First run is slow (embedding generation); subsequent runs are incremental.
+Pulls products from the DAZ CMS database, scans the content directories for anything the CMS does not track, generates embeddings, and stores everything in the local SQLite + ChromaDB index. First run is slow (embedding generation); subsequent runs are incremental.
 
 ```bash
 python vab.py load --force      # full rebuild from scratch
 python vab.py load --limit 100  # process only 100 products (testing)
-python vab.py load --phase etl  # ETL only, skip embedding
+python vab.py load --phase etl  # CMS products only, skip scan and embedding
+python vab.py load --phase scan # Content Library scan only
 ```
+
+#### Smart Content vs Content Library
+
+DAZ Studio's Smart Content pane is backed by the CMS database; the Content Library pane
+is the raw folder tree of your content directories. VAB indexes both:
+
+| Source | What it covers |
+|---|---|
+| `daz-store` | CMS products with a DAZ store SKU |
+| `cms-local` | CMS products with no store SKU — Renderosity and other third-party installs |
+| `filesystem` | Files found on disk with no CMS record at all, grouped into products by path |
+
+Filesystem products get a synthetic `fs-…` SKU, a thumbnail taken from the PNG DAZ Studio
+writes next to each asset, and a category/figure guess derived from their install path.
+`GET /api/v1/info` reports the per-source breakdown under `products_by_source`.
+
+Grouping filesystem content into products is heuristic — there is no product boundary on
+disk, only naming conventions. To inspect and tune what the scanner would produce before
+indexing:
+
+```bash
+python analyze_content_roots.py --show-dirs
+```
+
+Set `SCAN_MIN_PRODUCT_DEPTH` in `.env` (default 5) to control how aggressively sibling
+directories are merged into a single product.
 
 ### 3. Start the server
 
@@ -491,7 +519,7 @@ python vab.py server [--host HOST] [--port PORT] [--demo]
 
 ### `load`
 ```bash
-python vab.py load [--force] [--all] [--limit N] [--phase {etl,embed,all}]
+python vab.py load [--force] [--all] [--limit N] [--phase {etl,scan,embed,all}]
 ```
 
 ### `query`

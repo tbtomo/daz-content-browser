@@ -7,8 +7,10 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from utilities import fetch_json_from_url, fetch_html_content, async_fetch_json_from_url, async_fetch_html_content
+from utilities import fetch_json_from_url, fetch_html_content, async_fetch_json_from_url, async_fetch_html_content, find_thumbnail
 from managers.managers import chroma_db_manager, sqlite_db, daz_pg_analyzer
+from managers.daz_db_analyzer import LOCAL_SKU_PREFIX
+from managers import filesystem_scanner
 from embedding_utils import generate_embeddings
 import re
 from collections import Counter
@@ -18,6 +20,44 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+
+def is_local_sku(sku: str) -> bool:
+    """True for CMS products that have no DAZ store token (Content-Library-only)."""
+    return bool(sku) and sku.startswith(LOCAL_SKU_PREFIX)
+
+
+def resolve_local_thumbnails(skus: list, content_roots: list) -> dict:
+    """Finds a companion thumbnail PNG on disk for each of the given SKUs.
+
+    Products without a store page have no scraped image_url, so the UI would show a
+    placeholder. DAZ Studio writes a PNG next to most user-facing asset files; this
+    picks the first one that exists.
+
+    Args:
+        skus (list): SKUs to resolve (normally only local/synthetic ones).
+        content_roots (list): Absolute content directory paths to resolve against.
+
+    Returns:
+        dict: {sku: absolute_thumbnail_path}. SKUs with no thumbnail are omitted.
+    """
+    if not skus or daz_pg_analyzer is None:
+        return {}
+
+    candidates = daz_pg_analyzer.get_candidate_thumbnail_files(skus)
+    resolved = {}
+    for sku, files in candidates.items():
+        for entry in files:
+            relative = Path(entry["path"].lstrip("/")) / entry["filename"]
+            for root in content_roots:
+                thumb = find_thumbnail(Path(root) / relative)
+                if thumb:
+                    resolved[sku] = thumb.as_posix()
+                    break
+            if sku in resolved:
+                break
+    logger.info(f"Resolved local thumbnails for {len(resolved)}/{len(skus)} product(s).")
+    return resolved
 
 
 def determine_categories(content_type_string: str) -> dict:
@@ -96,7 +136,12 @@ async def _scrape_all_async(products_data: list, concurrency: int, on_progress=N
         nonlocal completed
         sku = product.get('sku')
         try:
-            web_data = await _scrape_product_page_async(session, semaphore, sku)
+            if is_local_sku(sku):
+                # Synthetic SKU — this product has no daz3d.com page. Skip the lookup
+                # rather than let it match an unrelated store product.
+                web_data = {}
+            else:
+                web_data = await _scrape_product_page_async(session, semaphore, sku)
         except Exception:
             logger.exception(f"Scrape failed for SKU {sku!r}, using empty web_data.")
             web_data = {}
@@ -190,6 +235,12 @@ def generate_embedding_text(product_data, web_data) -> str:
     # Add the high-quality human-written description from the web at the end.
     if web_desc:
         parts.append(f"Product Description: {web_desc}")
+    else:
+        # No store page (Content-Library-only product) — fall back to the CMS content
+        # types so the embedding still says something about what the product contains.
+        content_types = product_data.get('content_types')
+        if content_types:
+            parts.append(f"It contains content of the following types: {content_types.replace(',', ', ')}.")
 
     # Join all the parts into a single, cohesive paragraph.
     return " ".join(parts)
@@ -253,6 +304,8 @@ def generate_and_store_embeddings(processed_skus, on_progress=None, cancel_check
                 "category":          row["category"] or "",
                 "subcategories":     row["subcategories"] or "",
                 "asset_count":       row["asset_count"] or 0,
+                "source":            row["source"] or "daz-store",
+                "thumbnail_path":    row["thumbnail_path"] or "",
             }
             for row in rows_to_embed
         ]
@@ -359,6 +412,60 @@ def determine_compatibility(product_data: dict, figure_names: list) -> dict:
         'tags_to_append': compat_str or '' # Always use the original string for tags
     }
 
+def run_filesystem_scan(args, on_progress=None, cancel_check=None) -> list:
+    """Indexes content that exists on disk but has no CMS record.
+
+    Walks the DAZ content roots, subtracts everything the CMS already tracks, groups
+    the remainder into plausible products, and writes them to SQLite with synthetic
+    'fs-' SKUs. This is what makes Content-Library-only content searchable.
+
+    Args:
+        args: Parsed argument namespace (force, all, limit).
+        on_progress (callable, optional): on_progress(stage, current, total, detail).
+        cancel_check (callable, optional): Returns True to abort.
+
+    Returns:
+        list: SKUs written this run (ready for embedding).
+    """
+    if daz_pg_analyzer is None:
+        logger.warning("PostgreSQL not configured — skipping filesystem scan.")
+        return []
+
+    logger.info("Filesystem scan: looking for content not registered in the DAZ CMS…")
+    products = filesystem_scanner.scan(daz_pg_analyzer)
+    if not products:
+        return []
+
+    if cancel_check and cancel_check():
+        logger.info("Filesystem scan cancelled by user request.")
+        return []
+
+    known_skus = set(sqlite_db.get_all_skus_from_sqlite())
+    rows = [filesystem_scanner.build_product_row(p) for p in products]
+
+    if not (args.all or args.force):
+        before = len(rows)
+        rows = [r for r in rows if r["sku"] not in known_skus]
+        logger.info(f"Filesystem scan: {before - len(rows)} product(s) already indexed, {len(rows)} new.")
+
+    if getattr(args, "limit", None):
+        logger.info(f"--limit: capping filesystem scan at {args.limit} products.")
+        rows = rows[:args.limit]
+
+    written = []
+    total = len(rows)
+    for i, row in enumerate(rows, start=1):
+        if sqlite_db.insert_item(row):
+            written.append(row["sku"])
+        else:
+            logger.warning(f"SQLite insert failed for filesystem product {row['name']!r}.")
+        if on_progress:
+            on_progress("scan", i, total, row["name"])
+
+    logger.info(f"Filesystem scan complete. {len(written)} product(s) written to SQLite.")
+    return written
+
+
 def main(args, on_progress=None, cancel_check=None):
     """Main ETL and Embedding pipeline with command-line arguments.
 
@@ -395,6 +502,10 @@ def main(args, on_progress=None, cancel_check=None):
         logger.info("No new products to ETL. Exiting.")
         return
 
+    if args.phase == 'scan':
+        run_filesystem_scan(args, on_progress=on_progress, cancel_check=cancel_check)
+        return
+
     successfully_processed_skus = []
 
     if skus_to_process:
@@ -429,7 +540,14 @@ def main(args, on_progress=None, cancel_check=None):
 
         scraped = asyncio.run(_scrape_all_async(products_to_process_data, concurrency, _scrape_progress))
 
-        # --- Phase 2: Serial SQLite inserts (fast, no network I/O) ---
+        # --- Phase 2: Resolve on-disk thumbnails for products with no store page ---
+        local_skus = [p.get('sku') for p, _ in scraped if is_local_sku(p.get('sku'))]
+        if local_skus:
+            logger.info(f"Resolving on-disk thumbnails for {len(local_skus)} local product(s)…")
+        content_roots = daz_pg_analyzer.get_content_roots() if (local_skus and daz_pg_analyzer) else []
+        local_thumbnails = resolve_local_thumbnails(local_skus, content_roots)
+
+        # --- Phase 3: Serial SQLite inserts (fast, no network I/O) ---
         logger.info("Scraping complete. Inserting into SQLite…")
         for product, web_data in scraped:
             sku = product.get('sku')
@@ -471,6 +589,8 @@ def main(args, on_progress=None, cancel_check=None):
                     "enriched_at":          datetime.now(timezone.utc).isoformat(),
                     "mature":               web_data.get('mature'),
                     "asset_count":          product.get('content_item_count'),
+                    "source":               "cms-local" if is_local_sku(sku) else "daz-store",
+                    "thumbnail_path":       local_thumbnails.get(sku),
                 })
                 if ok:
                     successfully_processed_skus.append(sku)
@@ -488,6 +608,15 @@ def main(args, on_progress=None, cancel_check=None):
     if cancel_check and cancel_check():
         logger.info("Index cancelled after ETL phase.")
         return
+
+    if args.phase == 'all':
+        successfully_processed_skus.extend(
+            run_filesystem_scan(args, on_progress=on_progress, cancel_check=cancel_check)
+        )
+
+        if cancel_check and cancel_check():
+            logger.info("Index cancelled after filesystem scan.")
+            return
 
     if args.phase == 'embed' or args.phase == 'all':
 
@@ -531,7 +660,7 @@ if __name__ == "__main__":
     parser.add_argument('--force', action='store_true', help="Force a complete rebuild of the SQLite database (implies --all).")
     parser.add_argument('--all', action='store_true', help="Process all products from Postgres, not just new ones.")
     parser.add_argument('--limit', type=int, help="Process only a limited number of products. Ideal for testing.")
-    parser.add_argument('--phase', type=str, choices=['etl', 'embed', 'all'], default='all', help="Run only a specific phase: 'etl', 'embed', or both if omitted.")
+    parser.add_argument('--phase', type=str, choices=['etl', 'scan', 'embed', 'all'], default='all', help="Run only a specific phase: 'etl' (CMS products), 'scan' (Content Library files with no CMS record), 'embed', or all three if omitted.")
     args = parser.parse_args()
 
     main(args)

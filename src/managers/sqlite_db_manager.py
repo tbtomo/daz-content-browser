@@ -36,14 +36,28 @@ class SQLiteWrapper:
                 sku TEXT PRIMARY KEY, url TEXT, image_url TEXT, store TEXT, name TEXT, artist TEXT, price TEXT, description TEXT,
                 tags TEXT, formats TEXT, poly_count TEXT, textures_info TEXT, required_products TEXT, compatible_figures TEXT,
                 compatible_software TEXT, embedding_text TEXT, last_updated TEXT, category TEXT, subcategories TEXT, styles TEXT,
-                inferred_tags TEXT, enriched_at TEXT, mature INTEGER, asset_count INTEGER
+                inferred_tags TEXT, enriched_at TEXT, mature INTEGER, asset_count INTEGER,
+                source TEXT, content_dirs TEXT, thumbnail_path TEXT
             )
         ''')
-        try:
-            cursor.execute(f"ALTER TABLE {self.sqlite_db_table} ADD COLUMN asset_count INTEGER")
-            conn.commit()
-        except Exception:
-            pass  # column already exists
+        # Additive migrations for databases created by an earlier schema version.
+        for column, coltype in (
+            ("asset_count", "INTEGER"),
+            ("source", "TEXT"),
+            ("content_dirs", "TEXT"),
+            ("thumbnail_path", "TEXT"),
+        ):
+            try:
+                cursor.execute(
+                    f"ALTER TABLE {self.sqlite_db_table} ADD COLUMN {column} {coltype}"
+                )
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+        # Rows predating the 'source' column all came from the DAZ store pipeline.
+        cursor.execute(
+            f"UPDATE {self.sqlite_db_table} SET source = 'daz-store' WHERE source IS NULL"
+        )
         conn.commit()
         conn.close()
         self._logger.info(f"SQLite database '{self.sqlite_db_path}' / table '{self.sqlite_db_table}' ready.")
@@ -67,7 +81,16 @@ class SQLiteWrapper:
             list: A list of all SKUs in the SQLite database as strings.
         """
         return self._fetchall_query(f"SELECT sku FROM {self.sqlite_db_table}")
-    
+
+    def count_by_source(self) -> dict:
+        """Returns a {source: row_count} map, e.g. {'daz-store': 1620, 'filesystem': 2400}."""
+        rows = self.execute_fetchall_query(
+            f"SELECT COALESCE(source, 'daz-store') AS source, COUNT(*) "
+            f"FROM {self.sqlite_db_table} GROUP BY 1"
+        )
+        return {row[0]: row[1] for row in rows}
+
+
     def get_content_by_sku_batch(self, sku_batch):
         """Fetches full product data for a given batch of SKUs from SQLite.
         
@@ -83,7 +106,7 @@ class SQLiteWrapper:
         placeholders = ','.join(['?'] * len(sku_batch))
         
         sqlite_query = f"""
-            SELECT sku, url, image_url, embedding_text, name, artist, compatible_figures, tags, category, subcategories, asset_count
+            SELECT sku, url, image_url, embedding_text, name, artist, compatible_figures, tags, category, subcategories, asset_count, source, thumbnail_path
             FROM {self.sqlite_db_table}
             WHERE sku IN ({placeholders})
         """
@@ -206,6 +229,7 @@ class SQLiteWrapper:
             "tags", "formats", "poly_count", "textures_info", "required_products",
             "compatible_figures", "compatible_software", "embedding_text", "last_updated",
             "category", "subcategories", "styles", "inferred_tags", "enriched_at", "mature",
+            "asset_count", "source", "content_dirs", "thumbnail_path",
         }
         for col in columns:
             if col not in allowed:

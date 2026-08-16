@@ -63,6 +63,26 @@ def run_daz_script(script_name: str, script_args:list) -> bool:
         logger.exception(f"Unexpected error executing DAZ script: {e}")
         return False
     
+def find_thumbnail(asset_path) -> pathlib.Path | None:
+    """Returns the companion thumbnail PNG for a DAZ asset file, or None.
+
+    DAZ Studio places thumbnails alongside content files either with the same stem
+    ('FN Ethan.duf' -> 'FN Ethan.png') or with '.png' appended to the full filename
+    ('FN Ethan.duf' -> 'FN Ethan.duf.png').
+
+    Args:
+        asset_path: Absolute path to the asset file (str or Path).
+
+    Returns:
+        pathlib.Path | None: The first existing thumbnail, or None if there is none.
+    """
+    asset = pathlib.Path(asset_path)
+    for candidate in (asset.with_suffix(".png"), asset.parent / (asset.name + ".png")):
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def fetch_json_from_url(url: str, timeout: int = 10) -> dict | None:
     """
     Fetches content from a URL, parses it as JSON, and returns it.

@@ -17,7 +17,7 @@ def run_update_flow(task_status: dict, force: bool = False):
 
     def on_progress(stage: str, current: int, total: int, detail: str = ""):
         pct = int(current / total * 100) if total else 0
-        label = {"etl": "Indexing", "embed": "Embedding"}.get(stage, stage.capitalize())
+        label = {"etl": "Indexing", "scan": "Scanning Content Library", "embed": "Embedding"}.get(stage, stage.capitalize())
         task_status["stage"] = stage
         task_status["progress"] = f"{label}: {current}/{total} ({pct}%)" + (f" — {detail}" if detail else "")
 

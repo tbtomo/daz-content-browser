@@ -5,6 +5,7 @@ import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone, timedelta
+from urllib.parse import quote
 from pathlib import Path
 from typing import List, Optional
 
@@ -23,9 +24,10 @@ from demo_data import (
     get_demo_product as get_demo_product_mock,
     get_demo_filters as get_demo_filters_mock,
 )
-from utilities import open_daz_product
+from utilities import open_daz_product, find_thumbnail
 from api_tasks import run_update_flow
 from managers.managers import chroma_db_manager, daz_pg_analyzer, sqlite_db, daz_script_server
+from managers import filesystem_scanner
 
 import logging
 logger = logging.getLogger(__name__)
@@ -87,7 +89,7 @@ def _format_product(row: dict) -> dict:
 
     Safe to call on both full SQLite rows and partial ChromaDB metadata dicts.
     """
-    result = {k: v for k, v in row.items() if k not in ("embedding_text",)}
+    result = {k: v for k, v in row.items() if k not in ("embedding_text", "content_dirs")}
     for field in ("compatible_figures", "subcategories", "tags"):
         raw = result.get(field) or ""
         if not isinstance(raw, list):
@@ -99,6 +101,13 @@ def _format_product(row: dict) -> dict:
     result["install_date"] = result.get("enriched_at")
     result["is_installed"] = True
     result["asset_count"] = result.get("asset_count") or 0
+    result["source"] = result.get("source") or "daz-store"
+
+    # Products with no store page have no scraped image. Point the UI at the companion
+    # thumbnail the indexer found on disk, served through /api/v1/assets/thumbnail.
+    thumbnail_path = result.pop("thumbnail_path", None)
+    if not result.get("image_url") and thumbnail_path:
+        result["image_url"] = f"/api/v1/assets/thumbnail?path={quote(thumbnail_path)}"
     return result
 
 
@@ -381,6 +390,48 @@ def get_product_assets(sku: str):
     return get_assets(sku)
 
 
+def _reveal_in_file_manager(target: Path) -> None:
+    """Opens the OS file manager with `target` selected (file) or opened (directory)."""
+    if sys.platform == "win32":
+        # shell=True so Windows parses /select,<path> as a single argument;
+        # quoting the path handles spaces without confusing Explorer's parser.
+        if target.is_dir():
+            subprocess.Popen(f'explorer "{target}"', shell=True)
+        else:
+            subprocess.Popen(f'explorer /select,"{target}"', shell=True)
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", str(target)])
+    else:
+        subprocess.Popen(["xdg-open", str(target if target.is_dir() else target.parent)])
+
+
+def _open_product_folder(row: dict, product_name: str) -> dict:
+    """Navigates DAZ Studio (or the OS file manager) to a filesystem product's folder."""
+    try:
+        content_dirs = json.loads(row.get("content_dirs") or "[]")
+    except json.JSONDecodeError:
+        content_dirs = []
+    folder = next((d for d in content_dirs if Path(d).is_dir()), None)
+    if not folder:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No existing content directory recorded for '{product_name}'.",
+        )
+
+    if APP_MODE != "demo" and daz_script_server.is_available():
+        try:
+            result = daz_script_server.browse_to_folder(folder)
+            return {"success": True, "message": f"Opened '{product_name}' in the Content Library.", "via": "plugin", "detail": result}
+        except Exception as e:
+            logger.warning(f"DAZ Script Server browse-folder failed, falling back to file manager: {e}")
+
+    try:
+        _reveal_in_file_manager(Path(folder))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"success": True, "message": f"Opened '{folder}' in the file manager.", "via": "file-manager"}
+
+
 @app.post("/api/v1/products/{sku}/open", status_code=200)
 def open_product(sku: str):
     """Navigates the DAZ Studio Content Library to the product.
@@ -391,6 +442,11 @@ def open_product(sku: str):
     if not row:
         raise HTTPException(status_code=404, detail=f"Product '{sku}' not found.")
     product_name = row.get("name") or sku
+
+    # Filesystem-discovered products are not in the CMS, so the Content Library cannot
+    # be navigated to them by product name — go to their folder instead.
+    if filesystem_scanner.is_filesystem_sku(sku):
+        return _open_product_folder(row, product_name)
 
     if APP_MODE != "demo" and daz_script_server.is_available():
         try:
@@ -581,10 +637,40 @@ def get_content_roots():
     return {"content_roots": roots}
 
 
+# Declared before /api/v1/assets/{sku} — FastAPI matches routes in declaration order,
+# so the parameterised route would otherwise swallow /api/v1/assets/thumbnail.
+@app.get("/api/v1/assets/thumbnail")
+def get_asset_thumbnail(path: str):
+    """Serves the companion thumbnail PNG for a DAZ asset file.
+
+    DAZ Studio places thumbnails alongside content files with the same stem
+    and a .png extension (e.g. 'FN Ethan.duf' → 'FN Ethan.png').
+    Returns 404 when no thumbnail is found so the UI can show its placeholder.
+    """
+    thumbnail = find_thumbnail(path)
+    if thumbnail:
+        return FileResponse(str(thumbnail), media_type="image/png")
+    raise HTTPException(status_code=404, detail="No thumbnail found for this asset.")
+
+
 @app.get("/api/v1/assets/{sku}")
 def get_assets(sku: str):
     """Asset file paths for a SKU, with resolved absolute paths where available."""
-    if APP_MODE == "demo" or daz_pg_analyzer is None:
+    if APP_MODE == "demo":
+        return {"sku": sku, "files": []}
+
+    # Filesystem-discovered products have no CMS rows — read their files off disk.
+    if filesystem_scanner.is_filesystem_sku(sku):
+        row = sqlite_db.get_sku_row(sku)
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Product '{sku}' not found.")
+        try:
+            content_dirs = json.loads(row.get("content_dirs") or "[]")
+        except json.JSONDecodeError:
+            content_dirs = []
+        return {"sku": sku, "files": filesystem_scanner.list_files_for_dirs(content_dirs)}
+
+    if daz_pg_analyzer is None:
         return {"sku": sku, "files": []}
 
     files = daz_pg_analyzer.get_asset_files_by_sku(sku)
@@ -619,6 +705,8 @@ def browse_product(product_id: str):
         return {"status": "ok"}
     row = sqlite_db.get_sku_row(product_id)
     product_name = (row.get("name") if row else None) or product_id
+    if row and filesystem_scanner.is_filesystem_sku(product_id):
+        return _open_product_folder(row, product_name)
     success = open_daz_product(args=type("obj", (object,), {"product": product_name}))
     if not success:
         raise HTTPException(status_code=500, detail="Failed to open product in DAZ Studio.")
@@ -640,11 +728,17 @@ def get_info():
     last_update = sqlite_db.get_last_updated()
     postgres_count = daz_pg_analyzer.count_skus() if daz_pg_analyzer else -1
     sqlite_count = sqlite_db.count()
+    by_source = sqlite_db.count_by_source()
+    filesystem_count = by_source.get("filesystem", 0)
+
+    # Filesystem products exist only in SQLite, so comparing the CMS count against the
+    # whole ChromaDB collection would understate (or hide) genuinely new products.
+    indexed_from_cms = max(0, total_docs - filesystem_count)
 
     logger.info(
         f"/info: postgres={postgres_count}, sqlite={sqlite_count}, "
-        f"chromadb={total_docs}, "
-        f"new_products={max(0, postgres_count - total_docs)}"
+        f"chromadb={total_docs}, filesystem={filesystem_count}, "
+        f"new_products={max(0, postgres_count - indexed_from_cms)}"
     )
 
     return {
@@ -657,29 +751,10 @@ def get_info():
         },
         "total_products_postgres": postgres_count,
         "total_products_sqlite": sqlite_count,
-        "new_products": max(0, postgres_count - total_docs),
+        "total_products_filesystem": filesystem_count,
+        "products_by_source": by_source,
+        "new_products": max(0, postgres_count - indexed_from_cms),
     }
-
-
-# ── Asset file helpers ─────────────────────────────────────────────────────────
-
-@app.get("/api/v1/assets/thumbnail")
-def get_asset_thumbnail(path: str):
-    """Serves the companion thumbnail PNG for a DAZ asset file.
-
-    DAZ Studio places thumbnails alongside content files with the same stem
-    and a .png extension (e.g. 'FN Ethan.duf' → 'FN Ethan.png').
-    Returns 404 when no thumbnail is found so the UI can show its placeholder.
-    """
-    asset = Path(path)
-    candidates = [
-        asset.with_suffix(".png"),
-        asset.parent / (asset.name + ".png"),
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return FileResponse(str(candidate), media_type="image/png")
-    raise HTTPException(status_code=404, detail="No thumbnail found for this asset.")
 
 
 class RevealRequest(BaseModel):
@@ -693,14 +768,7 @@ def reveal_in_explorer(body: RevealRequest):
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"Path not found: {body.path}")
     try:
-        if sys.platform == "win32":
-            # shell=True so Windows parses /select,<path> as a single argument;
-            # quoting the path handles spaces without confusing Explorer's parser.
-            subprocess.Popen(f'explorer /select,"{target}"', shell=True)
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", "-R", str(target)])
-        else:
-            subprocess.Popen(["xdg-open", str(target.parent)])
+        _reveal_in_file_manager(target)
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

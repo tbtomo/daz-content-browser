@@ -20,6 +20,24 @@ _STANDARD_SCRIPTS = {
   return { success: true, name: args.name };
 })()""",
     },
+    "browse-folder": {
+        "description": "Navigate the Content Library pane to an absolute folder path",
+        "script": """(function(){
+  var args = getArguments()[0];
+  if (!args.path) throw "path argument required";
+  var pane = MainWindow.getPaneMgr().findPane("DzContentLibraryPane");
+  if (!pane) throw "Content Library pane not found";
+  // The pane's folder navigation method has varied across DAZ Studio versions.
+  var methods = ["browseToFolder", "browseToDir", "browseToPath", "browseTo"];
+  for (var i = 0; i < methods.length; i++) {
+    if (typeof pane[methods[i]] == "function") {
+      pane[methods[i]](args.path);
+      return { success: true, path: args.path, method: methods[i] };
+    }
+  }
+  throw "Content Library pane has no folder navigation method";
+})()""",
+    },
     "load-asset": {
         "description": "Load an asset file into the current scene by absolute path",
         "script": """(function(){
@@ -170,6 +188,15 @@ class DazScriptServerClient:
         """Navigate the DAZ Studio Content Library to the named product."""
         self._ensure_scripts_registered()
         return self._execute_registered("browse-product", {"name": product_name})
+
+    def browse_to_folder(self, folder_path: str) -> dict:
+        """Navigate the DAZ Studio Content Library to an absolute folder path.
+
+        Used for filesystem-discovered products, which have no CMS product record for
+        browse_to_product() to find.
+        """
+        self._ensure_scripts_registered()
+        return self._execute_registered("browse-folder", {"path": folder_path})
 
     def load_asset(self, asset_path: str) -> dict:
         """Load an asset file into the current DAZ Studio scene."""

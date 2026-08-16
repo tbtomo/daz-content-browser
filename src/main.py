@@ -33,6 +33,7 @@ def load_command(args):
         TimeRemainingColumn(),
     ) as progress:
         etl_task = progress.add_task("ETL       ", total=None)
+        scan_task = progress.add_task("Scanning  ", total=None, visible=False)
         embed_task = progress.add_task("Embedding ", total=None, visible=False)
 
         def on_progress(stage: str, current: int, total: int, detail: str = ""):
@@ -42,6 +43,14 @@ def load_command(args):
                     total=total,
                     completed=current,
                     description=f"ETL  {detail[:35]:<35}",
+                )
+            elif stage == "scan":
+                progress.update(
+                    scan_task,
+                    visible=True,
+                    total=total,
+                    completed=current,
+                    description=f"Scan {detail[:35]:<35}",
                 )
             elif stage == "embed":
                 progress.update(
@@ -119,6 +128,13 @@ def server_command(args):
 
 def main():
     """Main entry point for the CLI application."""
+    # Progress spinners and product names contain characters that legacy console
+    # codepages (cp932, cp1252, ...) cannot encode. Degrade them instead of letting
+    # a UnicodeEncodeError abort a long-running index.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -188,7 +204,7 @@ def main():
     parsers["load"].add_argument('--force', action='store_true', help="Force a complete rebuild of the SQLite database (implies --all).")
     parsers["load"].add_argument('--all', action='store_true', help="Process all products from Postgres, not just new ones.")
     parsers["load"].add_argument('--limit', type=int, help="Process only a limited number of products. Ideal for testing.")
-    parsers["load"].add_argument('--phase', type=str, choices=['test', 'etl', 'embed', 'all'], default='all', help="Run only a specific phase: 'etl', 'embed', or both if omitted.")
+    parsers["load"].add_argument('--phase', type=str, choices=['test', 'etl', 'scan', 'embed', 'all'], default='all', help="Run only a specific phase: 'etl' (CMS products), 'scan' (Content Library files with no CMS record), 'embed', or all three if omitted.")
 
 
     parsers["openproduct"].add_argument(
