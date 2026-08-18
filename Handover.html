@@ -352,9 +352,9 @@
         Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。
       </p>
       <div class="meta">
-        <span>2026-08-16 &ndash; 08-17</span>
+        <span>2026-08-16 &ndash; 08-18</span>
         <span class="mono">feature/content-library-indexing</span>
-        <span class="mono">6377a05</span>
+        <span class="mono">eb7bff9</span>
       </div>
     </header>
 
@@ -386,7 +386,7 @@
       </div>
 
       <p>
-        作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 3 コミットが載っており、すべて fork に push 済み。UI は一切改造していない（理由は<a href="#design">次節</a>）。
+        作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない（理由は<a href="#design">次節</a>）。
       </p>
     </section>
 
@@ -513,7 +513,7 @@
     <section id="bugs">
       <h2>途中で直した既存バグ</h2>
 
-      <p>今回の機能追加とは独立に、元から存在していた不具合を 3 件踏んだので直してある。上流にも同じ問題がある。</p>
+      <p>今回の機能追加とは独立に、元から存在していた不具合を 4 件踏んだので直してある。上流にも同じ問題がある。</p>
 
       <div class="stack">
         <details open>
@@ -534,6 +534,30 @@
           <summary>cp932 コンソールでインデックス処理ごと落ちる</summary>
           <p>
             rich の進捗スピナーが使う点字文字を cp932 が encode できず <code>UnicodeEncodeError</code> で異常終了していた。製品名の en dash でも同様。CLI 起動時に stdout/stderr を <code>errors="replace"</code> で再構成して回避。
+          </p>
+        </details>
+
+        <details>
+          <summary>検索結果が常に 500 件で頭打ちになっていた</summary>
+          <p>
+            <code>/api/v1/search</code> は ChromaDB から近傍 500 件を取得したうえで、<strong>その後に</strong> <code>min_relevance</code> を掛けていた。500 は該当件数ではなく候補プールの固定サイズなので、実際に何件マッチしようと表示は 500 で止まる。製品が 1,620 件だった頃は露見しにくかったが、3,239 件になって顕在化した。
+          </p>
+          <p>
+            UI 上では「Min match: any」も「50%+」も揃って 500 件と出て、プールより下を切る「70%+」でだけ本当の件数（2 件）が出る、という不可解な挙動になっていた。<code>UISearchRequest.max_results</code> の既定値を 5000 に上げ、絞り込みをプールサイズではなく閾値が担うようにして解決。
+          </p>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Min match</th><th>変更前</th><th>変更後</th></tr></thead>
+              <tbody>
+                <tr><td>any</td><td class="num">500</td><td class="num">3,239</td></tr>
+                <tr><td>50%+</td><td class="num">500</td><td class="num">3,236</td></tr>
+                <tr><td>60%+</td><td class="num">&mdash;</td><td class="num">72</td></tr>
+                <tr><td>70%+</td><td class="num">2</td><td class="num">2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            50%+ が 3,236 件という数字が示すとおり、埋め込みの類似度は 0.5 前後に大半が集まっている。実用的な絞り込みが起きるのは 60&ndash;70% の帯。実測コストは応答 0.28 秒 &rarr; 0.60 秒、ペイロード 270KB &rarr; 1.88MB（"office" で計測、dress / forest でも同等）。ビルド済み UI は <code>max_results</code> を送らないので、このサーバ側既定値が全ての UI 検索に効く。結果を 1 応答で返してページングはクライアント側という設計なので、製品数が桁違いに増えたらプールを広げるのではなくサーバページングを入れるべき。
           </p>
         </details>
       </div>
@@ -591,6 +615,7 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
             <tr><td class="mono">46602c2</td><td>Content Library の取り込み本体</td></tr>
             <tr><td class="mono">78bbba3</td><td>CLAUDE.md に bd 不使用の注記</td></tr>
             <tr><td class="mono">6377a05</td><td>走査中の進捗表示</td></tr>
+            <tr><td class="mono">eb7bff9</td><td>検索の候補プールを 500 &rarr; 5000 に</td></tr>
           </tbody>
         </table>
       </div>
@@ -618,7 +643,7 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
 
       <ul>
         <li>
-          <strong>上流への PR を出すか。</strong>fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグとグルーピングの O(n²) 問題。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する。
+          <strong>上流への PR を出すか。</strong>fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグ、グルーピングの O(n²) 問題、検索の 500 件上限。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する。
         </li>
         <li>
           <strong>fork に残っている上流のブランチ 7 本。</strong><code>feature/jit-morph-loader</code> 等。上流に追随しないなら削除してよい。
@@ -698,7 +723,7 @@ make demo-server     # デモモード（DB 不要）</code></pre>
     </section>
 
     <footer>
-      作業記録 &middot; 2026-08-16 &ndash; 08-17 &middot; リポジトリ <span class="mono">D:\OtherApps\daz-content-browser</span>
+      作業記録 &middot; 2026-08-16 &ndash; 08-18 &middot; リポジトリ <span class="mono">D:\OtherApps\daz-content-browser</span>
     </footer>
 
   </main>
