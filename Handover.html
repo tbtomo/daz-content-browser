@@ -632,6 +632,9 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
         <li>
           <strong><code>.env</code> の <code>DAZ_STUDIO_EXE_PATH=CHANGEME</code> は未設定のまま。</strong>元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック（DAZ Studio を起動して製品を開く）は機能しない。
         </li>
+        <li>
+          <strong><code>make dev-server</code> は自動リロードしない。</strong><code>uvicorn</code> を <code>--reload</code> 無しで起動しているので、<code>src/</code> を編集したら Ctrl+C &rarr; 起動し直すまで反映されない。編集したのに挙動が変わらない、で悩まないこと。
+        </li>
       </ul>
     </section>
 
@@ -665,6 +668,9 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
         <li>
           <strong>UI 自体は未改造。</strong><code>source</code> は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる。
         </li>
+        <li>
+          <strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong>候補プールを 5000 に上げた結果、"office" のような一般語では 3,239 件・1.88MB が返る（0.60 秒）。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はプールを更に広げることではなく、サーバ側ページングの導入（<code>ui/src</code> の submodule が要る）。
+        </li>
       </ul>
     </section>
 
@@ -684,6 +690,9 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
         </li>
         <li>
           コンテンツを追加した場合は UI の Update ボタン、または <code>python vab.py load</code>。どちらも同じ処理。
+        </li>
+        <li>
+          検索の健全性チェックは <code>office</code> で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる（<a href="#bugs">既存バグの 4 件目</a>）。
         </li>
       </ol>
     </section>
