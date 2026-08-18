@@ -162,7 +162,11 @@ class SearchFilters(BaseModel):
 class UISearchRequest(BaseModel):
     query: str
     filters: Optional[SearchFilters] = None
-    max_results: int = 500
+    # Candidate pool size, not a match count: the vector search always returns the N
+    # nearest neighbours, and min_relevance is applied afterwards. A pool smaller than
+    # the collection silently caps every result count at N, so keep this above the
+    # expected product total.
+    max_results: int = 5000
     min_relevance: float = 0.0
 
 
