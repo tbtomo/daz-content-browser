@@ -339,6 +339,7 @@
       <a href="#verify">検証したこと</a>
       <a href="#repo">リポジトリと環境</a>
       <a href="#open">未着手・判断待ち</a>
+      <a href="#japanese-search" style="padding-left:0.8rem;">└ 日本語検索（構想）</a>
       <a href="#resume">再開手順</a>
       <a href="#commands">コマンド早見表</a>
     </nav>
@@ -747,6 +748,50 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
           修正を入れたら <code>python vab.py load --phase scan</code> で再走査し、<code>/api/v1/info</code> の <code>products_by_source</code> で filesystem の件数が増えるかを確認する。
         </li>
       </ol>
+
+      <h3 id="japanese-search">今後やりたいこと：日本語の自由文で検索する</h3>
+
+      <p>
+        思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。
+      </p>
+
+      <p>
+        <strong>障害は埋め込みモデル。</strong><code>BAAI/bge-large-en-v1.5</code> は英語専用で、日本語クエリはトークナイズこそ通るが意味ベクトルとして成立しない。加えて <code>embedding_text</code> 側も英語（ストア製品は製品名・説明、filesystem 製品はパス由来の英単語）なので、日本語で引くには<strong>クロスリンガルに対応したモデルが要る</strong>。
+      </p>
+
+      <h4 style="font-family:system-ui,sans-serif; font-size:0.9rem; margin:1.4rem 0 0.5rem;">案 1 — 多言語モデルへ差し替え（本命）</h4>
+
+      <p>
+        差し替え口は<strong>既に用意されている</strong>。<code>src/main.py</code> の <code>--model</code> フラグ、環境変数 <code>EMBEDDING_MODEL_ID</code>、<code>server.py</code> の <code>embedding_model</code> / <code>query_model</code> 設定。<code>--model</code> のヘルプに <code>BAAI/bge-m3</code> が例として書かれており、上流も多言語モデルへの差し替えを想定している。
+      </p>
+
+      <ul>
+        <li>
+          <strong>次元の互換性を先に確認する。</strong><code>bge-m3</code> の dense ベクトルは現行と同じ 1024 次元とされるが、未実測。コード内に次元のハードコードは無い（<code>embedding_utils.py</code> の docstring に 1024 と書いてあるだけ）ので、次元が変わってもコード修正は要らないはずだが、ChromaDB のコレクションは作り直しになる。
+        </li>
+        <li>
+          <strong>再スクレイプは不要。</strong><code>embedding_text</code> は SQLite に残っているので、ChromaDB を捨てて <code>vab load --phase embed</code> で 3,239 件を再埋め込みすればよい。Web スクレイピングも Content Library 走査も走らない。
+        </li>
+        <li>
+          <strong>ONNX エクスポートはやり直しになる。</strong><code>export_model.py</code> / <code>vab_export.py</code> は <code>--model</code> を取るので手順自体はある。<code>bge-m3</code> は現行より大きく、<strong>CPU 推論のレイテンシが悪化する可能性がある</strong>。埋め込み時間と検索応答時間を切り替え前後で実測すること。
+        </li>
+        <li>
+          <strong>英語検索の品質も変わる。</strong>モデルが変われば類似度の分布ごと変わるので、<a href="#bugs">検索の 500 件上限を直したときに測った閾値の目安</a>（50%+ で 3,236 件、70%+ で 2 件）は当てにならなくなる。切り替え前に <code>office</code> / <code>dress</code> / <code>forest</code> の件数と応答時間を控えておき、前後で比較する。
+        </li>
+      </ul>
+
+      <h4 style="font-family:system-ui,sans-serif; font-size:0.9rem; margin:1.4rem 0 0.5rem;">案 2 — クエリだけ日英翻訳する</h4>
+
+      <p>
+        インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。<code>query_model</code> が <code>embedding_model</code> と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、<strong>翻訳のための外部依存（API 呼び出しなり小型モデルなり）が増える</strong>のと、訳語のブレがそのまま検索品質のブレになるのが難点。案 1 が通るならそちらが素直。
+      </p>
+
+      <div class="note">
+        <p class="eyebrow">UI について</p>
+        <p>
+          どちらの案でも <strong>UI の改造は不要</strong>。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。<code>ui/src</code> が未チェックアウトの submodule という制約に引っかからない。
+        </p>
+      </div>
 
       <h3>判断待ち</h3>
 
