@@ -332,6 +332,7 @@
     <p class="eyebrow">目次</p>
     <nav>
       <a href="#state">現在の状態</a>
+      <a href="#roots">コンテンツルートの棚卸し</a>
       <a href="#problem">何が問題だったか</a>
       <a href="#design">何を作ったか</a>
       <a href="#bugs">途中で直した既存バグ</a>
@@ -349,10 +350,10 @@
       <p class="eyebrow">引き継ぎ</p>
       <h1>DAZ Studio の Content Library を VAB に取り込む</h1>
       <p class="standfirst">
-        Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。
+        Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。2026-08-25 に<a href="#roots">コンテンツルートの棚卸し</a>を追記（調査のみ、コード変更なし）。
       </p>
       <div class="meta">
-        <span>2026-08-16 &ndash; 08-18</span>
+        <span>2026-08-16 &ndash; 08-18 &middot; 追記 08-25</span>
         <span class="mono">feature/content-library-indexing</span>
         <span class="mono">eb7bff9</span>
       </div>
@@ -387,6 +388,96 @@
 
       <p>
         作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない（理由は<a href="#design">次節</a>）。
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="roots">
+      <h2>コンテンツルートの棚卸し（2026-08-25 追記）</h2>
+
+      <p>
+        利用者から現在のコンテンツ配置を教わったので、SQLite のインデックス内容と実ディスクを突き合わせた。<strong>コードは変更していない</strong>。この節は調査結果のみで、対処は<a href="#open">未着手</a>に積んである。
+      </p>
+
+      <div class="note">
+        <p class="eyebrow">前提</p>
+        <p>
+          走査対象のルートは <code>.env</code> ではなく <strong>CMS の <code>dzcontent."tblBasePath"</code></strong> が真実（<code>daz_db_analyzer.get_content_roots()</code>）。この調査時点で DAZ Studio が起動しておらず PostgreSQL に接続できなかったため、<em>いま CMS が何本返すかは未確認</em>。以下の数字は最後のスキャン結果（SQLite の <code>content_dirs</code>）と実ディスクの実測に基づく。
+        </p>
+      </div>
+
+      <h3>ルートは 4 本ではなく実質 3 本</h3>
+
+      <p>
+        利用者の挙げた 4 本のうち 1 本はジャンクションで、実体は別ルートと同一だった。
+      </p>
+
+      <pre><code>C:\Users\Public\Documents\My DAZ 3D Library  ->  D:\DAZ 3D\My DAZ 3D Library   (junction)</code></pre>
+
+      <p>
+        <code>dedupe_roots()</code> は <code>Path.resolve()</code> を通すのでジャンクションは解決される。CMS が両方を base path に登録していても二重走査にはならない。実際 SQLite の <code>content_dirs</code> は全て解決後の <code>D:\DAZ 3D\My DAZ 3D Library\…</code> で記録されていた。
+      </p>
+
+      <h3>ルート別の内訳</h3>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>ルート</th><th class="num">走査対象ファイル</th><th class="num">filesystem 製品</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">D:\DAZ 3D\Studio\My Library</td>
+              <td class="num">.duf 107,896 / Poser 241</td>
+              <td class="num">1,566</td>
+            </tr>
+            <tr>
+              <td class="mono">D:\DAZ 3D\My DAZ 3D Library<br><span style="color:var(--muted); font-size:0.85em;">= Public のジャンクション先</span></td>
+              <td class="num">.duf 151,843 / Poser 3,363</td>
+              <td class="num">12</td>
+            </tr>
+            <tr>
+              <td class="mono">D:\Poser\My Poser Library</td>
+              <td class="num">.duf 0 / Poser 85</td>
+              <td class="num">1</td>
+            </tr>
+            <tr>
+              <td class="mono">C:\Users\tabby\OneDrive\…\Studio\My Library</td>
+              <td class="num">.duf 0 / Poser 0</td>
+              <td class="num">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul>
+        <li>
+          <strong><code>My DAZ 3D Library</code> の 12 製品は正常。</strong>ファイル数は最大だが、ここは DIM がインストールする場所でほぼ全ファイルが CMS 登録済み。tracked として差し引かれ、<span class="chip store">daz-store</span> 側 1,620 製品として既に入っている。
+        </li>
+        <li>
+          <strong>OneDrive のルートが 0 なのも正常。</strong>中身は <code>.dsf</code> 129 件のみ（<code>data/</code> 相当のサポートファイル）で、ユーザ向けファイルが 1 つも無い。
+        </li>
+      </ul>
+
+      <h3 id="poser-gap">未解決：Poser ライブラリが 1 製品しか拾えていない</h3>
+
+      <p>
+        <code>D:\Poser\My Poser Library</code> には製品フォルダが 4 つあるが、インデックスに入ったのは <span class="mono">Woman Inside</span>（<code>Darkseal_WomanInside</code> と <code>…2</code> を 1 製品に統合）だけ。<code>GRUNGEON Equipment Pack 6_Poser</code> と <code>davo_chamber7_Poser</code>（合わせて .pz2/.pp2 65 件）が落ちている。
+      </p>
+
+      <p>
+        疑わしいのは tracked 判定のキー。<code>load_tracked_files()</code> と <code>collect_untracked_dirs()</code> は <strong>(ルート相対パス, ファイル名) だけで照合していて、どのルート配下かを見ていない</strong>。
+      </p>
+
+      <pre><code># filesystem_scanner.collect_untracked_dirs()
+key = (str(rel.parent).replace("\\", "/").lower(), rel.name.lower())</code></pre>
+
+      <p>
+        この 2 製品は DS 版が <code>My Library</code> 側に CMS 登録済みで、Poser 版と相対パスが衝突した可能性が高い。ただし「CMS が Poser ルートも直接登録しているので単に tracked だった」という素直な説明も成り立ち、<strong>CMS に接続できないうちは確定できない</strong>。切り分けは <code>get_all_content_paths()</code> の結果に Poser 側の相対パスが含まれるかを見ればよい。
+      </p>
+
+      <p>
+        併せて、<code>collect_untracked_dirs()</code> は末尾で <code>tracked &gt; 0</code> のディレクトリを丸ごと捨てる。1 ファイルでも衝突すると同じディレクトリの未登録ファイルまで消えるので、キーをルート込み（絶対パス）にする修正はこの捨て方の見直しとセットで考えること。
       </p>
     </section>
 
@@ -642,6 +733,20 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
     <section id="open">
       <h2>未着手・判断待ち</h2>
 
+      <h3>次の一手（2026-08-25 時点）</h3>
+
+      <ol class="steps">
+        <li>
+          <strong>DAZ Studio を起動して CMS を上げ、<code>get_content_roots()</code> が今どのルートを返すか確認する。</strong>ルートは CMS の <code>tblBasePath</code> が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート（うち 1 本はジャンクション）を見ていた。
+        </li>
+        <li>
+          <strong>Poser ルートの取りこぼしを切り分ける。</strong><code>get_all_content_paths()</code> に <code>GRUNGEON Equipment Pack 6_Poser</code> / <code>davo_chamber7_Poser</code> の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、<code>collect_untracked_dirs()</code> の「<code>tracked &gt; 0</code> のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は<a href="#poser-gap">該当節</a>。
+        </li>
+        <li>
+          修正を入れたら <code>python vab.py load --phase scan</code> で再走査し、<code>/api/v1/info</code> の <code>products_by_source</code> で filesystem の件数が増えるかを確認する。
+        </li>
+      </ol>
+
       <h3>判断待ち</h3>
 
       <ul>
@@ -683,7 +788,7 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
           <code>cd D:\OtherApps\daz-content-browser</code> して <code>git status</code>。<code>feature/content-library-indexing</code> にいるはず。
         </li>
         <li>
-          DAZ Studio と PostgreSQL CMS が動いていることを確認（CMS は DAZ Studio が管理している）。
+          DAZ Studio と PostgreSQL CMS が動いていることを確認（CMS は DAZ Studio が管理している）。<strong>DAZ Studio が落ちていると <code>get_content_roots()</code> も <code>get_all_content_paths()</code> も引けず、ルート周りの調査は一切進まない</strong>（08-25 の調査はここで止まった）。
         </li>
         <li>
           <code>make dev-server</code> でサーバ起動。<code>http://localhost:8000</code> に 3,239 製品が並べば前回の状態を再現できている。
@@ -693,6 +798,9 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
         </li>
         <li>
           検索の健全性チェックは <code>office</code> で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる（<a href="#bugs">既存バグの 4 件目</a>）。
+        </li>
+        <li>
+          続きから着手するなら<a href="#open">未着手・判断待ち</a>の「次の一手」から。Poser ルートの取りこぼし調査が中断地点。
         </li>
       </ol>
     </section>
@@ -732,7 +840,7 @@ make demo-server     # デモモード（DB 不要）</code></pre>
     </section>
 
     <footer>
-      作業記録 &middot; 2026-08-16 &ndash; 08-18 &middot; リポジトリ <span class="mono">D:\OtherApps\daz-content-browser</span>
+      作業記録 &middot; 2026-08-16 &ndash; 08-18（08-25 に調査を追記）&middot; リポジトリ <span class="mono">D:\OtherApps\daz-content-browser</span>
     </footer>
 
   </main>
