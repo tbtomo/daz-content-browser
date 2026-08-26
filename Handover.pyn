@@ -3,13 +3,14 @@ meta meta "この文書について":
   indexed_products: 3239
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "eb7bff9(検索の候補プールを 500 → 5000 に)"
-  last_session: "2026-08-25(コンテンツルートの棚卸し。調査のみ、コード変更なし)"
+  last_code_commit: "多言語モデル対応(embedding_utils のモデル非依存化)"
+  last_session: "2026-08-27(日本語検索: モデル差し替えのためのコード側対応。モデル本体のDLと再埋め込みは未実行)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   sessions: "2026-08-16 〜 08-18 / 追記 2026-08-25"
   source_document: "Handover.html(この .pyn の元になった手書きの HTML)"
   status: implemented_verified_and_pushed
+  test_note: "tests/ は DAZ Studio(CMS PostgreSQL)が起動していないと test_api.py が 7 failed / 9 errors になる。埋め込み側の 11 件を含むそれ以外は green"
   tests_passing: 41
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
@@ -53,7 +54,6 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
 
   前提として、走査対象のルートは `.env` ではなく **CMS の `dzcontent."tblBasePath"`** が真実(`daz_db_analyzer.get_content_roots()`)。この調査時点で DAZ Studio が起動しておらず PostgreSQL に接続できなかったため、*いま CMS が何本返すかは未確認*。以下の数字は最後のスキャン結果(SQLite の `content_dirs`)と実ディスクの実測に基づく。
   """
-
   section roots-junction "ルートは 4 本ではなく実質 3 本":
     """
     利用者の挙げた 4 本のうち 1 本はジャンクションで、実体は別ルートと同一だった。
@@ -64,7 +64,6 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
 
     `dedupe_roots()` は `Path.resolve()` を通すのでジャンクションは解決される。CMS が両方を base path に登録していても二重走査にはならない。実際 SQLite の `content_dirs` は全て解決後の `D:\DAZ 3D\My DAZ 3D Library\…` で記録されていた。
     """
-
   section roots-breakdown "ルート別の内訳":
     """
     | ルート | 走査対象ファイル | filesystem 製品 |
@@ -77,13 +76,12 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     - **`My DAZ 3D Library` の 12 製品は正常。** ファイル数は最大だが、ここは DIM がインストールする場所でほぼ全ファイルが CMS 登録済み。tracked として差し引かれ、daz-store 側 1,620 製品として既に入っている
     - **OneDrive のルートが 0 なのも正常。** 中身は `.dsf` 129 件のみ(`data/` 相当のサポートファイル)で、ユーザ向けファイルが 1 つも無い
     """
-
   issue poser-gap "未解決:Poser ライブラリが 1 製品しか拾えていない":
-    status: open
-    root: "D:\\Poser\\My Poser Library"
-    missing_products: ["GRUNGEON Equipment Pack 6_Poser", "davo_chamber7_Poser"]
-    missing_files: 65
     blocked_by: "CMS(PostgreSQL)に接続できないと確定できない"
+    missing_files: 65
+    missing_products: ["GRUNGEON Equipment Pack 6_Poser", davo_chamber7_Poser]
+    root: "D:\\Poser\\My Poser Library"
+    status: open
     """
     `D:\Poser\My Poser Library` には製品フォルダが 4 つあるが、インデックスに入ったのは Woman Inside(`Darkseal_WomanInside` と `…2` を 1 製品に統合)だけ。`GRUNGEON Equipment Pack 6_Poser` と `davo_chamber7_Poser`(合わせて .pz2/.pp2 65 件)が落ちている。
 
@@ -126,12 +124,10 @@ section design "何を作ったか":
 
   ストアページが無い製品は、DAZ Studio がアセット横に書く PNG をサムネイルにし、`/api/v1/assets/thumbnail` 経由で配信する。`_format_product()` が `image_url` を組み立てるので、UI から見れば通常の製品と区別がつかない。
   """
-
   section design-phases "パイプラインのフェーズ":
     """
     `--phase` に `scan` を追加した。`all`(既定)は etl → scan → embed の順に実行する。WebUI の Update ボタンは `run_update_flow` 経由で `phase='all'` を呼ぶので、**ボタン 1 つで全部走る**。
     """
-
   section design-scan "ファイルシステム走査の要点":
     """
     - **対象拡張子** — `.duf` に加え Poser 形式 10 種。Poser 形式は `Runtime/Libraries/**` 配下に限定。`data/` は除外
@@ -139,7 +135,6 @@ section design "何を作ったか":
     - **ラッパーディレクトリの除去** — 同じ製品が「ルートに統合して展開」と「アーカイブのフォルダごと展開」で二重に入っているケースが多数あった。CMS の正規トップレベル名を使って剥がし、1 製品に畳んでいる(これで 2,933 → 1,580 製品)
     - **SKU の安定性** — SKU はパスそのものではなくラッパー除去後の相対パスから作る。片方のコピーを消しても SKU が変わらない
     """
-
   section design-files "主なファイル":
     """
     | ファイル | 役割 |
@@ -155,38 +150,34 @@ section design "何を作ったか":
     """
 
 section bugs "途中で直した既存バグ":
-  count: 4
   also_in_upstream: true
+  count: 4
   """
   今回の機能追加とは独立に、元から存在していた不具合を 4 件踏んだので直してある。上流にも同じ問題がある。
 
   このほか、`SKU_EXPR` をそのまま `WHERE` に使うと `dzcontent.content`(70 万行)の全走査になるため、アセット取得は `p.token` / `p.id` という索引の効く列で引くようにしてある。製品詳細を開くたびに全走査、という事態は避けられている(実測 0.02 秒)。
   """
-
   bug bug-thumbnail-route "サムネイル API がルート順で潰されていた":
     fixed: true
     """
     `/api/v1/assets/thumbnail` が `/api/v1/assets/{sku}` より**後に**宣言されていた。FastAPI は宣言順にマッチするため、全てのサムネイル要求がアセット一覧エンドポイントに流れ、画像ではなく `{"sku":"thumbnail","files":[]}` を返していた。ストア製品は CDN 画像を使うため露見していなかったが、ローカルサムネイルはこれに依存するので致命的。宣言順を入れ替えて解決。
     """
-
   bug bug-grouping-o2 "グルーピングが O(n²) で完走しなかった":
-    fixed: true
-    before: "10 分回しても終わらない"
     after: "約 2 秒"
+    before: "10 分回しても終わらない"
+    fixed: true
     """
     `merge_into_ancestors()` はマージのたびに全ルートを再走査する実装で、未登録 9,814 ディレクトリでは 10 分回しても終わらなかった。パスをトライ木に入れてボトムアップに 1 度だけ走査する方式に書き直し、**約 2 秒**になった。判定基準(深さ・カテゴリ語の除外)は元の実装と同じ。
     """
-
   bug bug-cp932 "cp932 コンソールでインデックス処理ごと落ちる":
     fixed: true
     """
     rich の進捗スピナーが使う点字文字を cp932 が encode できず `UnicodeEncodeError` で異常終了していた。製品名の en dash でも同様。CLI 起動時に stdout/stderr を `errors="replace"` で再構成して回避。
     """
-
   bug bug-search-cap "検索結果が常に 500 件で頭打ちになっていた":
-    fixed: true
     commit: eb7bff9
     fix: "UISearchRequest.max_results の既定値を 500 → 5000"
+    fixed: true
     """
     `/api/v1/search` は ChromaDB から近傍 500 件を取得したうえで、**その後に** `min_relevance` を掛けていた。500 は該当件数ではなく候補プールの固定サイズなので、実際に何件マッチしようと表示は 500 で止まる。製品が 1,620 件だった頃は露見しにくかったが、3,239 件になって顕在化した。
 
@@ -216,7 +207,6 @@ section verify "検証したこと":
   """
 
 section repo "リポジトリと環境":
-
   section repo-remote "git remote":
     """
     元は上流本家をそのまま `origin` にしていたため push できなかった。fork を作って張り替えてある。
@@ -228,7 +218,6 @@ section repo "リポジトリと環境":
 
     `main` と作業ブランチはどちらも `origin`(fork)を追跡する。`git push upstream` は権限が無いので失敗する。
     """
-
   section repo-commits "コミット":
     """
     | SHA | 内容 |
@@ -239,7 +228,6 @@ section repo "リポジトリと環境":
     | `eb7bff9` | 検索の候補プールを 500 → 5000 に |
     | `b921f51` ほか | この引継ぎ文書(コード変更なし) |
     """
-
   section repo-env "環境で注意すべき点":
     """
     - **`.venv` に pytest と httpx を追加インストールした。** `pyproject.toml` の依存には入っていない。テスト実行に必要だったため。不要なら `pip uninstall pytest httpx` で戻せる
@@ -249,17 +237,16 @@ section repo "リポジトリと環境":
     """
 
 section open "未着手・判断待ち":
-
   section next-steps "次の一手(2026-08-25 時点)":
     """
     1. **DAZ Studio を起動して CMS を上げ、`get_content_roots()` が今どのルートを返すか確認する。** ルートは CMS の `tblBasePath` が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた
     2. **Poser ルートの取りこぼしを切り分ける。** `get_all_content_paths()` に `GRUNGEON Equipment Pack 6_Poser` / `davo_chamber7_Poser` の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は @poser-gap
     3. 修正を入れたら `python vab.py load --phase scan` で再走査し、`/api/v1/info` の `products_by_source` で filesystem の件数が増えるかを確認する
     """
-
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
-    status: idea
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
+    chosen: "案 1(BAAI/bge-m3 へ差し替え)"
+    status: code_ready_model_swap_pending
     ui_change_needed: false
     """
     思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。
@@ -268,9 +255,8 @@ section open "未着手・判断待ち":
 
     どちらの案でも **UI の改造は不要**。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。`ui/src` が未チェックアウトの submodule という制約に引っかからない。
     """
-
     option js-model-swap "案 1 — 多言語モデルへ差し替え(本命)":
-      candidate: "BAAI/bge-m3"
+      candidate: BAAI/bge-m3
       reindex_needed: embed_only
       rescrape_needed: false
       """
@@ -281,20 +267,69 @@ section open "未着手・判断待ち":
       - **ONNX エクスポートはやり直しになる。** `export_model.py` / `vab_export.py` は `--model` を取るので手順自体はある。`bge-m3` は現行より大きく、**CPU 推論のレイテンシが悪化する可能性がある**。埋め込み時間と検索応答時間を切り替え前後で実測すること
       - **英語検索の品質も変わる。** モデルが変われば類似度の分布ごと変わるので、@bug-search-cap で測った閾値の目安(50%+ で 3,236 件、70%+ で 2 件)は当てにならなくなる。切り替え前に `office` / `dress` / `forest` の件数と応答時間を控えておき、前後で比較する
       """
-
     option js-translate-query "案 2 — クエリだけ日英翻訳する":
-      reindex_needed: false
       new_dependency: true
+      reindex_needed: false
       """
       インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。`query_model` が `embedding_model` と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、**翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える**のと、訳語のブレがそのまま検索品質のブレになるのが難点。@js-model-swap が通るならそちらが素直。
       """
+    task js-impl "コード側の対応(実装済み・2026-08-27)":
+      model_downloaded: false
+      reindexed: false
+      status: done
+      tests_added: 11
+      """
+      @js-model-swap を実行できるようにするための修正。**モデル本体のダウンロードと再埋め込みはまだ行っていない**(利用者が実行する)。
 
+      引継ぎ文書に書かれていなかった実際の障害が 2 つあった。どちらも「`--model` を渡すだけで切り替わる」という前提を崩すもの。
+
+      - **`token_type_ids` の決め打ち。** `generate_embeddings()` は ONNX へ 3 入力を固定で渡していたが、`bge-m3` も `multilingual-e5-*` も XLM-RoBERTa 系でこの入力を持たない。差し替えた瞬間に `InvalidArgument: Invalid Feed Input Name: token_type_ids` で落ちる。`session.get_inputs()` を見て、グラフが宣言した入力だけを渡すようにした
+      - **`--model` が無効だった。** `embedding_utils` はモデル ID を *import 時* に読んでいたが、`main.py` は `managers.managers` 経由でこのモジュールを import した *後* に `os.environ` を書き換えていた。つまりフラグは常に無視されていた。設定解決を遅延(初回使用時)に変更して解消
+
+      併せて入れたもの:
+
+      - モデルごとの規約表(`_MODEL_CONVENTIONS`)。`bge-m3` は CLS プーリング、E5 系は `query: ` / `passage: ` 接頭辞。**間違えても例外は出ず、黙って質が落ちるだけ**なので、呼び出し側任せにせずコードに固定した。既定モデルは従来どおり mean プーリング・接頭辞なしのまま(既存インデックスと互換)
+      - 未使用だった `is_query` 引数を接頭辞の切り替えに接続
+      - `vab.py load --model` を追加(従来は `server` にしか無く、インデックスと検索でモデルがズレうる)
+      - `export_model.py --model`、`EMBEDDING_MAX_LENGTH` / `EMBEDDING_POOLING` などの環境変数
+      - `/api/v1/settings` の `embedding_model` / `query_model` は実際の推論に一切使われていない飾りだったので、少なくとも `EMBEDDING_MODEL_ID` を反映して嘘をつかないようにした
+
+      既定モデルでの出力はビット単位で従来と一致することを確認済み(`_mean_pool` に同じ入力を通して差分 0.0)。**既存の ChromaDB 3,239 件はそのまま有効。**
+      """
+    runbook js-switch "切り替え手順(未実行)":
+      download_size: "約 2.2GB"
+      rescan_needed: false
+      rescrape_needed: false
+      """
+      ```bash
+      python check_search_quality.py --json > before.json   # 切り替え前の実測を保存
+
+      python export_model.py --model BAAI/bge-m3            # → models/bge-m3/
+      rd /s /q chroma_db                                    # 旧モデルのベクトルは流用できない
+      ```
+
+      `.env` の `EMBEDDING_MODEL_ID=BAAI/bge-m3` を有効化してから:
+
+      ```bash
+      python vab.py load --phase embed                      # SQLite から 3,239 件を再埋め込み
+      make dev-server
+      python check_search_quality.py --json > after.json     # 日本語クエリを含めて比較
+      ```
+
+      Web スクレイピングも Content Library 走査も走らない(`embedding_text` は SQLite に残っているため)。
+
+      見るべき点:
+
+      - 「和室の背景」「ロングヘアの女性キャラ」で意味のある上位結果が出るか
+      - `office` / `dress` / `forest` の英語検索が劣化していないか
+      - 応答時間。`bge-m3` は現行より大きいので CPU 推論は遅くなる。埋め込み時間も含めて実測すること
+      - **閾値の目安は作り直しになる。** @bug-search-cap で測った「50%+ で 3,236 件、70%+ で 2 件」は別モデルには引き継げない
+      """
   section pending "判断待ち":
     """
     - **上流への PR を出すか。** fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグ(@bug-thumbnail-route)、グルーピングの O(n²) 問題(@bug-grouping-o2)、検索の 500 件上限(@bug-search-cap)。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する
     - **fork に残っている上流のブランチ 7 本。** `feature/jit-morph-loader` 等。上流に追随しないなら削除してよい
     """
-
   section limits "既知の限界":
     """
     - **グルーピングの過剰マージが 4 件。** ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。`.env` の `SCAN_MIN_PRODUCT_DEPTH`(既定 5)で調整できる

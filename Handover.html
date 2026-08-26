@@ -104,7 +104,7 @@ a{color:var(--accent)}
 <h2 class="node__title">この文書について</h2>
 <a class="node__id" href="#meta">meta</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>indexed_products</th><td><code>3239</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;eb7bff9(検索の候補プールを 500 → 5000 に)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-25(コンテンツルートの棚卸し。調査のみ、コード変更なし)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 2026-08-25&quot;</code></td></tr><tr><th>source_document</th><td><code>&quot;Handover.html(この .pyn の元になった手書きの HTML)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>tests_passing</th><td><code>41</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>indexed_products</th><td><code>3239</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;多言語モデル対応(embedding_utils のモデル非依存化)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(日本語検索: モデル差し替えのためのコード側対応。モデル本体のDLと再埋め込みは未実行)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 2026-08-25&quot;</code></td></tr><tr><th>source_document</th><td><code>&quot;Handover.html(この .pyn の元になった手書きの HTML)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;tests/ は DAZ Studio(CMS PostgreSQL)が起動していないと test_api.py が 7 failed / 9 errors になる。埋め込み側の 11 件を含むそれ以外は green&quot;</code></td></tr><tr><th>tests_passing</th><td><code>41</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><p>この文書は <code>Handover.html</code> を PYN(<code>.pyn</code>)へ書き換えたものです。節見出しはすべてノードになっており、HTML の <code>id</code> 属性がそのままノード ID になっています(<code>#state</code> → <code>state</code> など)。</p>
 <p>書き換えは <code>python -m pyn patch Handover.pyn --ops ops.json</code> が安全です(ID 宛なので行番号がずれても当たり、失敗時は文書が変更されません)。<code>#</code> コメントは作業メモ扱いで、射影を再生成すると消えます。</p></div>
 </section>
@@ -331,7 +331,7 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
 <h2 class="node__title">今後やりたいこと:日本語の自由文で検索する</h2>
 <a class="node__id" href="#japanese-search">japanese-search</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>blocker</th><td><code>&quot;埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用&quot;</code></td></tr><tr><th>status</th><td><code>idea</code></td></tr><tr><th>ui_change_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>blocker</th><td><code>&quot;埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用&quot;</code></td></tr><tr><th>chosen</th><td><code>&quot;案 1(BAAI/bge-m3 へ差し替え)&quot;</code></td></tr><tr><th>status</th><td><code>code_ready_model_swap_pending</code></td></tr><tr><th>ui_change_needed</th><td><code>false</code></td></tr></tbody></table></div>
 <div class="prose"><p>思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。</p>
 <p><strong>障害は埋め込みモデル。</strong> <code>BAAI/bge-large-en-v1.5</code> は英語専用で、日本語クエリはトークナイズこそ通るが意味ベクトルとして成立しない。加えて <code>embedding_text</code> 側も英語(ストア製品は製品名・説明、filesystem 製品はパス由来の英単語)なので、日本語で引くには<strong>クロスリンガルに対応したモデルが要る</strong>。</p>
 <p>どちらの案でも <strong>UI の改造は不要</strong>。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。<code>ui/src</code> が未チェックアウトの submodule という制約に引っかからない。</p></div>
@@ -355,6 +355,41 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
 <div class="table-wrap"><table class="attrs"><tbody><tr><th>new_dependency</th><td><code>true</code></td></tr><tr><th>reindex_needed</th><td><code>false</code></td></tr></tbody></table></div>
 <div class="prose"><p>インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。<code>query_model</code> が <code>embedding_model</code> と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、<strong>翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える</strong>のと、訳語のブレがそのまま検索品質のブレになるのが難点。<a class="ref" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a> が通るならそちらが素直。</p></div>
 <div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a></div>
+</section>
+<section class="node node--task depth-2" id="js-impl">
+<header class="node__head">
+<span class="badge">task</span>
+<h2 class="node__title">コード側の対応(実装済み・2026-08-27)</h2>
+<a class="node__id" href="#js-impl">js-impl</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>model_downloaded</th><td><code>false</code></td></tr><tr><th>reindexed</th><td><code>false</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>tests_added</th><td><code>11</code></td></tr></tbody></table></div>
+<div class="prose"><p><a class="ref" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a> を実行できるようにするための修正。<strong>モデル本体のダウンロードと再埋め込みはまだ行っていない</strong>(利用者が実行する)。</p>
+<p>引継ぎ文書に書かれていなかった実際の障害が 2 つあった。どちらも「<code>--model</code> を渡すだけで切り替わる」という前提を崩すもの。</p>
+<ul><li><strong><code>token_type_ids</code> の決め打ち。</strong> <code>generate_embeddings()</code> は ONNX へ 3 入力を固定で渡していたが、<code>bge-m3</code> も <code>multilingual-e5-*</code> も XLM-RoBERTa 系でこの入力を持たない。差し替えた瞬間に <code>InvalidArgument: Invalid Feed Input Name: token_type_ids</code> で落ちる。<code>session.get_inputs()</code> を見て、グラフが宣言した入力だけを渡すようにした</li><li><strong><code>--model</code> が無効だった。</strong> <code>embedding_utils</code> はモデル ID を <em>import 時</em> に読んでいたが、<code>main.py</code> は <code>managers.managers</code> 経由でこのモジュールを import した <em>後</em> に <code>os.environ</code> を書き換えていた。つまりフラグは常に無視されていた。設定解決を遅延(初回使用時)に変更して解消</li></ul>
+<p>併せて入れたもの:</p>
+<ul><li>モデルごとの規約表(<code>_MODEL_CONVENTIONS</code>)。<code>bge-m3</code> は CLS プーリング、E5 系は <code>query: </code> / <code>passage: </code> 接頭辞。<strong>間違えても例外は出ず、黙って質が落ちるだけ</strong>なので、呼び出し側任せにせずコードに固定した。既定モデルは従来どおり mean プーリング・接頭辞なしのまま(既存インデックスと互換)</li><li>未使用だった <code>is_query</code> 引数を接頭辞の切り替えに接続</li><li><code>vab.py load --model</code> を追加(従来は <code>server</code> にしか無く、インデックスと検索でモデルがズレうる)</li><li><code>export_model.py --model</code>、<code>EMBEDDING_MAX_LENGTH</code> / <code>EMBEDDING_POOLING</code> などの環境変数</li><li><code>/api/v1/settings</code> の <code>embedding_model</code> / <code>query_model</code> は実際の推論に一切使われていない飾りだったので、少なくとも <code>EMBEDDING_MODEL_ID</code> を反映して嘘をつかないようにした</li></ul>
+<p>既定モデルでの出力はビット単位で従来と一致することを確認済み(<code>_mean_pool</code> に同じ入力を通して差分 0.0)。<strong>既存の ChromaDB 3,239 件はそのまま有効。</strong></p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a></div>
+</section>
+<section class="node node--runbook depth-2" id="js-switch">
+<header class="node__head">
+<span class="badge">runbook</span>
+<h2 class="node__title">切り替え手順(未実行)</h2>
+<a class="node__id" href="#js-switch">js-switch</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>download_size</th><td><code>&quot;約 2.2GB&quot;</code></td></tr><tr><th>rescan_needed</th><td><code>false</code></td></tr><tr><th>rescrape_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="prose"><pre><code class="lang-bash">python check_search_quality.py --json &gt; before.json   # 切り替え前の実測を保存
+
+python export_model.py --model BAAI/bge-m3            # → models/bge-m3/
+rd /s /q chroma_db                                    # 旧モデルのベクトルは流用できない</code></pre>
+<p><code>.env</code> の <code>EMBEDDING_MODEL_ID=BAAI/bge-m3</code> を有効化してから:</p>
+<pre><code class="lang-bash">python vab.py load --phase embed                      # SQLite から 3,239 件を再埋め込み
+make dev-server
+python check_search_quality.py --json &gt; after.json     # 日本語クエリを含めて比較</code></pre>
+<p>Web スクレイピングも Content Library 走査も走らない(<code>embedding_text</code> は SQLite に残っているため)。</p>
+<p>見るべき点:</p>
+<ul><li>「和室の背景」「ロングヘアの女性キャラ」で意味のある上位結果が出るか</li><li><code>office</code> / <code>dress</code> / <code>forest</code> の英語検索が劣化していないか</li><li>応答時間。<code>bge-m3</code> は現行より大きいので CPU 推論は遅くなる。埋め込み時間も含めて実測すること</li><li><strong>閾値の目安は作り直しになる。</strong> <a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a> で測った「50%+ で 3,236 件、70%+ で 2 件」は別モデルには引き継げない</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
 </section>
 </section>
 <section class="node node--section depth-1" id="pending">

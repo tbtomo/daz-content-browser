@@ -60,8 +60,12 @@ _SETTINGS_DEFAULTS: dict = {
     "cms_user": os.getenv("DB_USER", ""),
     "cms_password": os.getenv("DB_PASS", ""),
     "cms_schema": os.getenv("DB_SCHEMA", "dzcontent"),
-    "embedding_model": os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5"),
-    "query_model": os.getenv("QUERY_MODEL", "BAAI/bge-large-en-v1.5"),
+    # Reported for display only. The model actually loaded is EMBEDDING_MODEL_ID
+    # (resolved in embedding_utils at first use); these fall back to it so /settings
+    # cannot claim a different model than the one answering queries. Changing the model
+    # means re-embedding the whole index, so it is not settable at runtime here.
+    "embedding_model": os.getenv("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL_ID", "BAAI/bge-large-en-v1.5"),
+    "query_model": os.getenv("QUERY_MODEL") or os.getenv("EMBEDDING_MODEL_ID", "BAAI/bge-large-en-v1.5"),
     "daz_script_server_url": os.getenv("DAZ_SCRIPT_SERVER_URL", "http://localhost:18811"),
     "daz_script_server_enabled": os.getenv("DAZ_SCRIPT_SERVER_ENABLED", "false").lower() == "true",
 }

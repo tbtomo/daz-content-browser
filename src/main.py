@@ -22,6 +22,13 @@ from managers.managers import chroma_db_manager, sqlite_db
 
 def load_command(args):
     """Loads data from DAZ Postgres to SQLite and ChromaDB."""
+    # Must be set before the first embedding call — embedding_utils resolves its config
+    # lazily, on first use. Index and queries have to use the same model, so whatever is
+    # passed here must also be passed to `server` (or set as EMBEDDING_MODEL_ID in .env).
+    if getattr(args, "model", ""):
+        os.environ["EMBEDDING_MODEL_ID"] = args.model
+        print(f"--- Embedding model: {args.model} ---")
+
     from managers.postgres_db_manager import main as load_dazdb_content
 
     with Progress(
@@ -205,6 +212,11 @@ def main():
     parsers["load"].add_argument('--all', action='store_true', help="Process all products from Postgres, not just new ones.")
     parsers["load"].add_argument('--limit', type=int, help="Process only a limited number of products. Ideal for testing.")
     parsers["load"].add_argument('--phase', type=str, choices=['test', 'etl', 'scan', 'embed', 'all'], default='all', help="Run only a specific phase: 'etl' (CMS products), 'scan' (Content Library files with no CMS record), 'embed', or all three if omitted.")
+    parsers["load"].add_argument(
+        "--model", default="", metavar="MODEL_ID",
+        help="HuggingFace model ID for embeddings (e.g. BAAI/bge-m3). Must match the model "
+             "the server queries with. Defaults to BAAI/bge-large-en-v1.5.",
+    )
 
 
     parsers["openproduct"].add_argument(
