@@ -1,0 +1,349 @@
+meta meta "この文書について":
+  branch: feature/content-library-indexing
+  indexed_products: 3239
+  indexed_products_before: 1620
+  language: ja
+  last_code_commit: "eb7bff9(検索の候補プールを 500 → 5000 に)"
+  last_session: "2026-08-25(コンテンツルートの棚卸し。調査のみ、コード変更なし)"
+  origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
+  project: "VAB Content Library 対応"
+  sessions: "2026-08-16 〜 08-18 / 追記 2026-08-25"
+  source_document: "Handover.html(この .pyn の元になった手書きの HTML)"
+  status: implemented_verified_and_pushed
+  tests_passing: 41
+  upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
+  workdir: "D:\\OtherApps\\daz-content-browser"
+  """
+  この文書は `Handover.html` を PYN(`.pyn`)へ書き換えたものです。節見出しはすべてノードになっており、HTML の `id` 属性がそのままノード ID になっています(`#state` → `state` など)。
+
+  書き換えは `python -m pyn patch Handover.pyn --ops ops.json` が安全です(ID 宛なので行番号がずれても当たり、失敗時は文書が変更されません)。`#` コメントは作業メモ扱いで、射影を再生成すると消えます。
+  """
+
+goal goal "DAZ Studio の Content Library を VAB に取り込む":
+  """
+  Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。
+
+  2026-08-25 に @roots を追記(調査のみ、コード変更なし)。
+  """
+
+section state "現在の状態":
+  indexed: 3239
+  indexed_before: 1620
+  newly_found: 1619
+  newly_found_cms_local: 43
+  newly_found_filesystem: 1576
+  pushed: true
+  tests: "41 / 41 green"
+  """
+  | 指標 | 値 | 補足 |
+  |---|---|---|
+  | インデックス済み | 3,239 | 作業前 1,620 |
+  | 新規に見えた製品 | 1,619 | cms-local 43 / filesystem 1,576 |
+  | テスト | 41 / 41 | 全て green |
+  | push | fork へ完了 | tbtomo/daz-content-browser |
+
+  作業ツリーはクリーン、stash なし。ブランチ `feature/content-library-indexing` に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない(理由は @design)。
+  """
+
+section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
+  added: 2026-08-25
+  code_changed: false
+  """
+  利用者から現在のコンテンツ配置を教わったので、SQLite のインデックス内容と実ディスクを突き合わせた。**コードは変更していない**。この節は調査結果のみで、対処は @open に積んである。
+
+  前提として、走査対象のルートは `.env` ではなく **CMS の `dzcontent."tblBasePath"`** が真実(`daz_db_analyzer.get_content_roots()`)。この調査時点で DAZ Studio が起動しておらず PostgreSQL に接続できなかったため、*いま CMS が何本返すかは未確認*。以下の数字は最後のスキャン結果(SQLite の `content_dirs`)と実ディスクの実測に基づく。
+  """
+
+  section roots-junction "ルートは 4 本ではなく実質 3 本":
+    """
+    利用者の挙げた 4 本のうち 1 本はジャンクションで、実体は別ルートと同一だった。
+
+    ```
+    C:\Users\Public\Documents\My DAZ 3D Library  ->  D:\DAZ 3D\My DAZ 3D Library   (junction)
+    ```
+
+    `dedupe_roots()` は `Path.resolve()` を通すのでジャンクションは解決される。CMS が両方を base path に登録していても二重走査にはならない。実際 SQLite の `content_dirs` は全て解決後の `D:\DAZ 3D\My DAZ 3D Library\…` で記録されていた。
+    """
+
+  section roots-breakdown "ルート別の内訳":
+    """
+    | ルート | 走査対象ファイル | filesystem 製品 |
+    |---|---|---|
+    | `D:\DAZ 3D\Studio\My Library` | .duf 107,896 / Poser 241 | 1,566 |
+    | `D:\DAZ 3D\My DAZ 3D Library`(= Public のジャンクション先) | .duf 151,843 / Poser 3,363 | 12 |
+    | `D:\Poser\My Poser Library` | .duf 0 / Poser 85 | 1 |
+    | `C:\Users\tabby\OneDrive\…\Studio\My Library` | .duf 0 / Poser 0 | 0 |
+
+    - **`My DAZ 3D Library` の 12 製品は正常。** ファイル数は最大だが、ここは DIM がインストールする場所でほぼ全ファイルが CMS 登録済み。tracked として差し引かれ、daz-store 側 1,620 製品として既に入っている
+    - **OneDrive のルートが 0 なのも正常。** 中身は `.dsf` 129 件のみ(`data/` 相当のサポートファイル)で、ユーザ向けファイルが 1 つも無い
+    """
+
+  issue poser-gap "未解決:Poser ライブラリが 1 製品しか拾えていない":
+    status: open
+    root: "D:\\Poser\\My Poser Library"
+    missing_products: ["GRUNGEON Equipment Pack 6_Poser", "davo_chamber7_Poser"]
+    missing_files: 65
+    blocked_by: "CMS(PostgreSQL)に接続できないと確定できない"
+    """
+    `D:\Poser\My Poser Library` には製品フォルダが 4 つあるが、インデックスに入ったのは Woman Inside(`Darkseal_WomanInside` と `…2` を 1 製品に統合)だけ。`GRUNGEON Equipment Pack 6_Poser` と `davo_chamber7_Poser`(合わせて .pz2/.pp2 65 件)が落ちている。
+
+    疑わしいのは tracked 判定のキー。`load_tracked_files()` と `collect_untracked_dirs()` は **(ルート相対パス, ファイル名) だけで照合していて、どのルート配下かを見ていない**。
+
+    ```python
+    # filesystem_scanner.collect_untracked_dirs()
+    key = (str(rel.parent).replace("\\", "/").lower(), rel.name.lower())
+    ```
+
+    この 2 製品は DS 版が `My Library` 側に CMS 登録済みで、Poser 版と相対パスが衝突した可能性が高い。ただし「CMS が Poser ルートも直接登録しているので単に tracked だった」という素直な説明も成り立ち、**CMS に接続できないうちは確定できない**。切り分けは `get_all_content_paths()` の結果に Poser 側の相対パスが含まれるかを見ればよい。
+
+    併せて、`collect_untracked_dirs()` は末尾で tracked が 1 以上のディレクトリを丸ごと捨てる。1 ファイルでも衝突すると同じディレクトリの未登録ファイルまで消えるので、キーをルート込み(絶対パス)にする修正はこの捨て方の見直しとセットで考えること。
+    """
+
+section problem "何が問題だったか":
+  """
+  パイプライン全体が **DAZ ストアの SKU をキーにしていた**。`daz_db_analyzer.get_all_skus()` が `WHERE token IS NOT NULL AND token != ''` で絞っていたため、SKU を持たないコンテンツは PostgreSQL → SQLite → ChromaDB のどこにも入らなかった。
+
+  DAZ Studio の **Smart Content** ペインは CMS データベースが実体で、**Content Library** ペインはコンテンツディレクトリの生のフォルダツリー。つまり後者にしか現れないものが丸ごと欠落していた。実 CMS・実ライブラリに接続して測った結果:
+
+  | ギャップ | 実測 | 備考 |
+  |---|---|---|
+  | CMS にはあるが `token` が空の製品 | 43 製品 | Renderosity 等の他社製品 |
+  | CMS に登録すら無いディスク上のファイル | 109,127 件 | ユーザ向けファイル 264,162 件中 41%、9,814 ディレクトリ |
+  | Poser 形式ライブラリ 2 ルート | .duf 0 件 | 中身は `.pz2`/`.cr2`/`.pp2`。CMS にも `.pz2` は 1,047 件のみ |
+
+  設計上の制約として、`ui/src` は未チェックアウトの git submodule(bmf-daz-content-browser-ui)で、手元にはビルド済みの `ui/dist` しか無い。**UI 改造ゼロで成立させること**が前提条件になった。結果として「合成 SKU で通常製品と同じ行を作る」方針を採っている。
+  """
+
+section design "何を作ったか":
+  """
+  SQLite の製品行に `source` 列を足し、3 系統を同一スキーマに正規化した。合成 SKU を使うので、既存の一覧・検索・フィルタ・サムネイル導線がそのまま動く。
+
+  | source | SKU 形式 | 由来 | 画像 |
+  |---|---|---|---|
+  | daz-store | `DAZ token` | 従来どおり。daz3d.com をスクレイプ | ストアの CDN |
+  | cms-local | `cms-<product.id>` | CMS にあるがストア SKU 無し | ディスク上の隣接 PNG |
+  | filesystem | `fs-<sha1>` | CMS に無い。ディスク走査で発見 | ディスク上の隣接 PNG |
+
+  ストアページが無い製品は、DAZ Studio がアセット横に書く PNG をサムネイルにし、`/api/v1/assets/thumbnail` 経由で配信する。`_format_product()` が `image_url` を組み立てるので、UI から見れば通常の製品と区別がつかない。
+  """
+
+  section design-phases "パイプラインのフェーズ":
+    """
+    `--phase` に `scan` を追加した。`all`(既定)は etl → scan → embed の順に実行する。WebUI の Update ボタンは `run_update_flow` 経由で `phase='all'` を呼ぶので、**ボタン 1 つで全部走る**。
+    """
+
+  section design-scan "ファイルシステム走査の要点":
+    """
+    - **対象拡張子** — `.duf` に加え Poser 形式 10 種。Poser 形式は `Runtime/Libraries/**` 配下に限定。`data/` は除外
+    - **入れ子ルートの除去** — このマシンでは `My Library` とその配下 3 ディレクトリが両方 root 登録されていた。最も浅いものだけ残さないと二重カウントになる
+    - **ラッパーディレクトリの除去** — 同じ製品が「ルートに統合して展開」と「アーカイブのフォルダごと展開」で二重に入っているケースが多数あった。CMS の正規トップレベル名を使って剥がし、1 製品に畳んでいる(これで 2,933 → 1,580 製品)
+    - **SKU の安定性** — SKU はパスそのものではなくラッパー除去後の相対パスから作る。片方のコピーを消しても SKU が変わらない
+    """
+
+  section design-files "主なファイル":
+    """
+    | ファイル | 役割 |
+    |---|---|
+    | `src/managers/filesystem_scanner.py` | **新規。** 走査・グルーピング・製品行生成。約 700 行 |
+    | `src/managers/daz_db_analyzer.py` | `SKU_EXPR` の導入。合成 SKU で CMS を引く |
+    | `src/managers/postgres_db_manager.py` | scan フェーズ、スクレイプの分岐、サムネイル解決 |
+    | `src/managers/sqlite_db_manager.py` | `source` / `content_dirs` / `thumbnail_path` 列の追加 |
+    | `src/server.py` | サムネイル URL 合成、fs 製品のアセット列挙、フォルダで開く導線 |
+    | `src/managers/daz_script_server.py` | `browse-folder` スクリプトの追加 |
+    | `analyze_content_roots.py` | 新モジュールの薄い CLI ラッパに変更。ヒューリスティック調整用 |
+    | `tests/test_filesystem_scanner.py` | **新規。** 12 テスト |
+    """
+
+section bugs "途中で直した既存バグ":
+  count: 4
+  also_in_upstream: true
+  """
+  今回の機能追加とは独立に、元から存在していた不具合を 4 件踏んだので直してある。上流にも同じ問題がある。
+
+  このほか、`SKU_EXPR` をそのまま `WHERE` に使うと `dzcontent.content`(70 万行)の全走査になるため、アセット取得は `p.token` / `p.id` という索引の効く列で引くようにしてある。製品詳細を開くたびに全走査、という事態は避けられている(実測 0.02 秒)。
+  """
+
+  bug bug-thumbnail-route "サムネイル API がルート順で潰されていた":
+    fixed: true
+    """
+    `/api/v1/assets/thumbnail` が `/api/v1/assets/{sku}` より**後に**宣言されていた。FastAPI は宣言順にマッチするため、全てのサムネイル要求がアセット一覧エンドポイントに流れ、画像ではなく `{"sku":"thumbnail","files":[]}` を返していた。ストア製品は CDN 画像を使うため露見していなかったが、ローカルサムネイルはこれに依存するので致命的。宣言順を入れ替えて解決。
+    """
+
+  bug bug-grouping-o2 "グルーピングが O(n²) で完走しなかった":
+    fixed: true
+    before: "10 分回しても終わらない"
+    after: "約 2 秒"
+    """
+    `merge_into_ancestors()` はマージのたびに全ルートを再走査する実装で、未登録 9,814 ディレクトリでは 10 分回しても終わらなかった。パスをトライ木に入れてボトムアップに 1 度だけ走査する方式に書き直し、**約 2 秒**になった。判定基準(深さ・カテゴリ語の除外)は元の実装と同じ。
+    """
+
+  bug bug-cp932 "cp932 コンソールでインデックス処理ごと落ちる":
+    fixed: true
+    """
+    rich の進捗スピナーが使う点字文字を cp932 が encode できず `UnicodeEncodeError` で異常終了していた。製品名の en dash でも同様。CLI 起動時に stdout/stderr を `errors="replace"` で再構成して回避。
+    """
+
+  bug bug-search-cap "検索結果が常に 500 件で頭打ちになっていた":
+    fixed: true
+    commit: eb7bff9
+    fix: "UISearchRequest.max_results の既定値を 500 → 5000"
+    """
+    `/api/v1/search` は ChromaDB から近傍 500 件を取得したうえで、**その後に** `min_relevance` を掛けていた。500 は該当件数ではなく候補プールの固定サイズなので、実際に何件マッチしようと表示は 500 で止まる。製品が 1,620 件だった頃は露見しにくかったが、3,239 件になって顕在化した。
+
+    UI 上では「Min match: any」も「50%+」も揃って 500 件と出て、プールより下を切る「70%+」でだけ本当の件数(2 件)が出る、という不可解な挙動になっていた。`UISearchRequest.max_results` の既定値を 5000 に上げ、絞り込みをプールサイズではなく閾値が担うようにして解決。
+
+    | Min match | 変更前 | 変更後 |
+    |---|---|---|
+    | any | 500 | 3,239 |
+    | 50%+ | 500 | 3,236 |
+    | 60%+ | — | 72 |
+    | 70%+ | 2 | 2 |
+
+    50%+ が 3,236 件という数字が示すとおり、埋め込みの類似度は 0.5 前後に大半が集まっている。実用的な絞り込みが起きるのは 60〜70% の帯。実測コストは応答 0.28 秒 → 0.60 秒、ペイロード 270KB → 1.88MB("office" で計測、dress / forest でも同等)。ビルド済み UI は `max_results` を送らないので、このサーバ側既定値が全ての UI 検索に効く。結果を 1 応答で返してページングはクライアント側という設計なので、製品数が桁違いに増えたらプールを広げるのではなくサーバページングを入れるべき。
+    """
+
+section verify "検証したこと":
+  """
+  - **テスト** — `pytest tests/` 41 件 green(新規 12 件を含む)。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認
+  - **実データでの ETL** — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決
+  - **実データでの走査** — filesystem 1,576 製品を登録。1,542 件(98%)にサムネイルあり
+  - **API** — `/info` の内訳、意味検索でローカル製品がヒットすること、`/assets/{sku}` が fs 製品でディスクからファイルを返すこと、サムネイルが実 PNG(HTTP 200 / image/png)で返ることを確認
+  - **UI** — ブラウザで表示確認。UI 無改造のまま 3,239 製品が実サムネイル付きで並ぶ
+  - **Update ボタン** — `POST /api/v1/update` を実際に叩き、etl → scan → embed が走り差分 0 件で正常終了することを確認。走査中の進捗表示も追加後に再確認済み
+  - **DAZ Studio 連携** — Script Server 2.9.0 稼働中に `browse-folder` を実行し成功。実在したメソッドは `browseToPath`(`browseToFolder`/`browseToDir` は存在せず、候補を並べたフォールバックが効いた)
+
+  目視未確認: `browse-folder` は API が成功を返したところまで確認済み。DAZ Studio の Content Library ペインが実際に該当フォルダへ移動したかは画面が見えないため未確認。気になる場合は fs 製品で「開く」を押して確認されたい。
+  """
+
+section repo "リポジトリと環境":
+
+  section repo-remote "git remote":
+    """
+    元は上流本家をそのまま `origin` にしていたため push できなかった。fork を作って張り替えてある。
+
+    ```
+    origin    https://github.com/tbtomo/daz-content-browser.git        ← fork (public)
+    upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家 (AGPL-3.0)
+    ```
+
+    `main` と作業ブランチはどちらも `origin`(fork)を追跡する。`git push upstream` は権限が無いので失敗する。
+    """
+
+  section repo-commits "コミット":
+    """
+    | SHA | 内容 |
+    |---|---|
+    | `46602c2` | Content Library の取り込み本体 |
+    | `78bbba3` | CLAUDE.md に bd 不使用の注記 |
+    | `6377a05` | 走査中の進捗表示 |
+    | `eb7bff9` | 検索の候補プールを 500 → 5000 に |
+    | `b921f51` ほか | この引継ぎ文書(コード変更なし) |
+    """
+
+  section repo-env "環境で注意すべき点":
+    """
+    - **`.venv` に pytest と httpx を追加インストールした。** `pyproject.toml` の依存には入っていない。テスト実行に必要だったため。不要なら `pip uninstall pytest httpx` で戻せる
+    - **`bd`(beads)は使わない。** 未インストールで、`.beads/` の課題は上流メンテナのもの。`CLAUDE.md` 冒頭の「Local overrides」節に明記済み(自動生成ブロックの外側なので再生成で消えない)
+    - **`.env` の `DAZ_STUDIO_EXE_PATH=CHANGEME` は未設定のまま。** 元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック(DAZ Studio を起動して製品を開く)は機能しない
+    - **`make dev-server` は自動リロードしない。** `uvicorn` を `--reload` 無しで起動しているので、`src/` を編集したら Ctrl+C → 起動し直すまで反映されない。編集したのに挙動が変わらない、で悩まないこと
+    """
+
+section open "未着手・判断待ち":
+
+  section next-steps "次の一手(2026-08-25 時点)":
+    """
+    1. **DAZ Studio を起動して CMS を上げ、`get_content_roots()` が今どのルートを返すか確認する。** ルートは CMS の `tblBasePath` が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた
+    2. **Poser ルートの取りこぼしを切り分ける。** `get_all_content_paths()` に `GRUNGEON Equipment Pack 6_Poser` / `davo_chamber7_Poser` の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は @poser-gap
+    3. 修正を入れたら `python vab.py load --phase scan` で再走査し、`/api/v1/info` の `products_by_source` で filesystem の件数が増えるかを確認する
+    """
+
+  idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
+    status: idea
+    blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
+    ui_change_needed: false
+    """
+    思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。
+
+    **障害は埋め込みモデル。** `BAAI/bge-large-en-v1.5` は英語専用で、日本語クエリはトークナイズこそ通るが意味ベクトルとして成立しない。加えて `embedding_text` 側も英語(ストア製品は製品名・説明、filesystem 製品はパス由来の英単語)なので、日本語で引くには**クロスリンガルに対応したモデルが要る**。
+
+    どちらの案でも **UI の改造は不要**。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。`ui/src` が未チェックアウトの submodule という制約に引っかからない。
+    """
+
+    option js-model-swap "案 1 — 多言語モデルへ差し替え(本命)":
+      candidate: "BAAI/bge-m3"
+      reindex_needed: embed_only
+      rescrape_needed: false
+      """
+      差し替え口は**既に用意されている**。`src/main.py` の `--model` フラグ、環境変数 `EMBEDDING_MODEL_ID`、`server.py` の `embedding_model` / `query_model` 設定。`--model` のヘルプに `BAAI/bge-m3` が例として書かれており、上流も多言語モデルへの差し替えを想定している。
+
+      - **次元の互換性を先に確認する。** `bge-m3` の dense ベクトルは現行と同じ 1024 次元とされるが、未実測。コード内に次元のハードコードは無い(`embedding_utils.py` の docstring に 1024 と書いてあるだけ)ので、次元が変わってもコード修正は要らないはずだが、ChromaDB のコレクションは作り直しになる
+      - **再スクレイプは不要。** `embedding_text` は SQLite に残っているので、ChromaDB を捨てて `vab load --phase embed` で 3,239 件を再埋め込みすればよい。Web スクレイピングも Content Library 走査も走らない
+      - **ONNX エクスポートはやり直しになる。** `export_model.py` / `vab_export.py` は `--model` を取るので手順自体はある。`bge-m3` は現行より大きく、**CPU 推論のレイテンシが悪化する可能性がある**。埋め込み時間と検索応答時間を切り替え前後で実測すること
+      - **英語検索の品質も変わる。** モデルが変われば類似度の分布ごと変わるので、@bug-search-cap で測った閾値の目安(50%+ で 3,236 件、70%+ で 2 件)は当てにならなくなる。切り替え前に `office` / `dress` / `forest` の件数と応答時間を控えておき、前後で比較する
+      """
+
+    option js-translate-query "案 2 — クエリだけ日英翻訳する":
+      reindex_needed: false
+      new_dependency: true
+      """
+      インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。`query_model` が `embedding_model` と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、**翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える**のと、訳語のブレがそのまま検索品質のブレになるのが難点。@js-model-swap が通るならそちらが素直。
+      """
+
+  section pending "判断待ち":
+    """
+    - **上流への PR を出すか。** fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグ(@bug-thumbnail-route)、グルーピングの O(n²) 問題(@bug-grouping-o2)、検索の 500 件上限(@bug-search-cap)。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する
+    - **fork に残っている上流のブランチ 7 本。** `feature/jit-morph-loader` 等。上流に追随しないなら削除してよい
+    """
+
+  section limits "既知の限界":
+    """
+    - **グルーピングの過剰マージが 4 件。** ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。`.env` の `SCAN_MIN_PRODUCT_DEPTH`(既定 5)で調整できる
+    - **物理的に 2 箇所へ展開された製品は別製品として出る場合がある。** 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える
+    - **UI の Update ボタンが `force` をどう送っているか未確認。** `ui/src` が未チェックアウトのため。差分実行(`force: false`)で動くことは API 経由で確認済み
+    - **UI 自体は未改造。** `source` は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる
+    - **検索は毎回ほぼ全製品を 1 応答で返す。** 候補プールを 5000 に上げた結果、"office" のような一般語では 3,239 件・1.88MB が返る(0.60 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はプールを更に広げることではなく、サーバ側ページングの導入(`ui/src` の submodule が要る)
+    """
+
+section resume "再開手順":
+  """
+  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいるはず
+  2. DAZ Studio と PostgreSQL CMS が動いていることを確認(CMS は DAZ Studio が管理している)。**DAZ Studio が落ちていると `get_content_roots()` も `get_all_content_paths()` も引けず、ルート周りの調査は一切進まない**(08-25 の調査はここで止まった)
+  3. `make dev-server` でサーバ起動。`http://localhost:8000` に 3,239 製品が並べば前回の状態を再現できている
+  4. コンテンツを追加した場合は UI の Update ボタン、または `python vab.py load`。どちらも同じ処理
+  5. 検索の健全性チェックは `office` で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(@bug-search-cap)
+  6. 続きから着手するなら @next-steps から。@poser-gap の調査が中断地点
+  """
+
+section commands "コマンド早見表":
+  """
+  インデックス:
+
+  ```bash
+  python vab.py load                 # etl → scan → embed(差分)
+  python vab.py load --phase scan    # Content Library 走査のみ
+  python vab.py load --phase etl     # CMS 製品のみ
+  python vab.py load --force         # 全再構築
+  ```
+
+  ヒューリスティックの調整:
+
+  ```bash
+  python analyze_content_roots.py --show-dirs
+  # .env の SCAN_MIN_PRODUCT_DEPTH(既定 5)で粒度を変える
+  ```
+
+  テストとサーバ:
+
+  ```bash
+  .venv\Scripts\python -m pytest tests\ -v
+  make dev-server      # 本番モード
+  make demo-server     # デモモード(DB 不要)
+  ```
+
+  状態の確認:
+
+  ```bash
+  curl -s http://localhost:8000/api/v1/info
+  # products_by_source に 3 系統の内訳が出る
+  ```
+  """

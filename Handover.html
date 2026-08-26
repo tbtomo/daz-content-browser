@@ -1,893 +1,411 @@
-<title>VAB Content Library 対応</title>
-
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAZ Studio の Content Library を VAB に取り込む</title>
 <style>
-  :root {
-    --ground:      #f6f6f4;
-    --surface:     #ffffff;
-    --surface-alt: #eeeeea;
-    --ink:         #1b1f26;
-    --muted:       #5c636f;
-    --line:        #d8d8d2;
-    --line-soft:   #e6e6e1;
-    --accent:      #0f766e;
-    --accent-ink:  #0b5a54;
-    --accent-wash: #e2efed;
-    --store:       #6b7280;
-    --local:       #a1590a;
-    --fs:          #0f766e;
-    --warn-wash:   #f8f0e2;
-    --warn-line:   #dcc08a;
+:root{
+  --bg:#fbfbfa; --surface:#ffffff; --line:#e4e2dd; --line-soft:#efedea;
+  --fg:#1f1e1c; --fg-dim:#6b6862; --accent:#8a5a2b; --accent-soft:#f2ece4;
+  --badge-bg:#efedea; --code-bg:#f5f3f0; --warn:#a33;
+}
+:root:not([data-theme="light"]){ }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#191817; --surface:#211f1e; --line:#35322f; --line-soft:#2b2927;
+    --fg:#eceae6; --fg-dim:#9a958d; --accent:#d9a066; --accent-soft:#2e2721;
+    --badge-bg:#2b2927; --code-bg:#262422; --warn:#e08a8a;
   }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground:      #14181e;
-      --surface:     #1b212a;
-      --surface-alt: #222a35;
-      --ink:         #e4e7ec;
-      --muted:       #98a1af;
-      --line:        #2e3742;
-      --line-soft:   #262e38;
-      --accent:      #46b3a6;
-      --accent-ink:  #6fc9be;
-      --accent-wash: #1a2e2e;
-      --store:       #909aa8;
-      --local:       #d99a4e;
-      --fs:          #46b3a6;
-      --warn-wash:   #2a2418;
-      --warn-line:   #5c4a26;
-    }
-  }
-
-  :root[data-theme="dark"] {
-    --ground:      #14181e;
-    --surface:     #1b212a;
-    --surface-alt: #222a35;
-    --ink:         #e4e7ec;
-    --muted:       #98a1af;
-    --line:        #2e3742;
-    --line-soft:   #262e38;
-    --accent:      #46b3a6;
-    --accent-ink:  #6fc9be;
-    --accent-wash: #1a2e2e;
-    --store:       #909aa8;
-    --local:       #d99a4e;
-    --fs:          #46b3a6;
-    --warn-wash:   #2a2418;
-    --warn-line:   #5c4a26;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    font-family: Georgia, "Hiragino Mincho ProN", "Yu Mincho", serif;
-    font-size: 16.5px;
-    line-height: 1.75;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .sans {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-  }
-
-  code, kbd, .mono {
-    font-family: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
-    font-size: 0.86em;
-  }
-
-  code {
-    background: var(--surface-alt);
-    border-radius: 3px;
-    padding: 0.1em 0.35em;
-  }
-
-  pre {
-    margin: 0;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--accent);
-    padding: 0.9rem 1.1rem;
-    overflow-x: auto;
-    line-height: 1.6;
-  }
-
-  pre code { background: none; padding: 0; }
-
-  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
-  a:focus-visible, summary:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  /* ── Shell ─────────────────────────────────────────── */
-
-  .shell {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 3rem;
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 3rem 1.5rem 6rem;
-  }
-
-  @media (min-width: 1020px) {
-    .shell {
-      grid-template-columns: 210px minmax(0, 1fr);
-      gap: 4rem;
-      padding-top: 4.5rem;
-    }
-    .rail { position: sticky; top: 2.5rem; align-self: start; }
-  }
-
-  .rail { font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
-  .rail nav { display: flex; flex-direction: column; gap: 0.15rem; }
-  .rail a {
-    color: var(--muted);
-    text-decoration: none;
-    font-size: 0.82rem;
-    padding: 0.22rem 0;
-    border-bottom: 1px solid transparent;
-  }
-  .rail a:hover { color: var(--accent-ink); border-bottom-color: var(--line); }
-
-  .eyebrow {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin: 0 0 0.6rem;
-  }
-
-  /* ── Masthead ──────────────────────────────────────── */
-
-  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 1.6rem; margin-bottom: 2.5rem; }
-
-  h1 {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: clamp(1.9rem, 4.2vw, 2.7rem);
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    text-wrap: balance;
-    margin: 0 0 0.7rem;
-  }
-
-  .standfirst { font-size: 1.06rem; color: var(--muted); margin: 0; max-width: 62ch; }
-
-  .meta {
-    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    font-size: 0.76rem;
-    color: var(--muted);
-    margin-top: 1.2rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem 1.4rem;
-  }
-
-  /* ── Sections ──────────────────────────────────────── */
-
-  section { margin-bottom: 3.4rem; scroll-margin-top: 2rem; }
-
-  h2 {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 1.32rem;
-    font-weight: 640;
-    letter-spacing: -0.01em;
-    text-wrap: balance;
-    margin: 0 0 1.1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--line);
-  }
-
-  h3 {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 0.97rem;
-    font-weight: 640;
-    margin: 2rem 0 0.6rem;
-  }
-
-  p { margin: 0 0 1rem; max-width: 68ch; }
-  ul, ol { max-width: 68ch; padding-left: 1.3rem; margin: 0 0 1rem; }
-  li { margin-bottom: 0.45rem; }
-  li::marker { color: var(--muted); }
-
-  /* ── Status cards ──────────────────────────────────── */
-
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-    margin-bottom: 2rem;
-  }
-
-  .card { background: var(--surface); padding: 1rem 1.1rem; }
-
-  .card .k {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 0.66rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    display: block;
-    margin-bottom: 0.35rem;
-  }
-
-  .card .v {
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 1.5rem;
-    font-weight: 640;
-    line-height: 1.15;
-    font-variant-numeric: tabular-nums;
-    display: block;
-  }
-
-  .card .v.small { font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word; }
-  .card .sub { font-size: 0.76rem; color: var(--muted); font-family: system-ui, sans-serif; }
-
-  /* ── Tables ────────────────────────────────────────── */
-
-  .tablewrap { overflow-x: auto; border: 1px solid var(--line); margin-bottom: 1.3rem; }
-
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 520px;
-    background: var(--surface);
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 0.87rem;
-  }
-
-  th, td { text-align: left; padding: 0.62rem 0.9rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
-  th { font-weight: 640; font-size: 0.71rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--surface-alt); }
-  tbody tr:last-child td { border-bottom: none; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  td .mono, th .mono { font-size: 0.84em; }
-
-  /* ── Source chips ──────────────────────────────────── */
-
-  .chip {
-    display: inline-block;
-    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    font-size: 0.73rem;
-    padding: 0.08em 0.5em;
-    border-radius: 2px;
-    border: 1px solid currentColor;
-    white-space: nowrap;
-  }
-  .chip.store { color: var(--store); }
-  .chip.local { color: var(--local); }
-  .chip.fs    { color: var(--fs); }
-
-  /* ── Callout ───────────────────────────────────────── */
-
-  .note {
-    background: var(--warn-wash);
-    border: 1px solid var(--warn-line);
-    padding: 0.9rem 1.1rem;
-    margin: 0 0 1.3rem;
-    max-width: 68ch;
-  }
-  .note p:last-child { margin-bottom: 0; }
-  .note .eyebrow { color: var(--ink); opacity: 0.72; }
-
-  /* ── Steps (ordered — real sequence) ───────────────── */
-
-  ol.steps { list-style: none; padding-left: 0; counter-reset: step; }
-  ol.steps > li {
-    counter-increment: step;
-    position: relative;
-    padding-left: 2.2rem;
-    margin-bottom: 1rem;
-  }
-  ol.steps > li::before {
-    content: counter(step);
-    position: absolute;
-    left: 0;
-    top: 0.15rem;
-    font-family: ui-monospace, Consolas, monospace;
-    font-size: 0.74rem;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    width: 1.5rem;
-    height: 1.5rem;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-  }
-
-  .stack { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.3rem; }
-
-  details {
-    border: 1px solid var(--line);
-    background: var(--surface);
-    padding: 0.7rem 1rem;
-  }
-  summary {
-    cursor: pointer;
-    font-family: system-ui, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    font-size: 0.88rem;
-    font-weight: 600;
-  }
-  details[open] summary { margin-bottom: 0.7rem; }
-
-  footer {
-    border-top: 1px solid var(--line);
-    padding-top: 1.2rem;
-    color: var(--muted);
-    font-size: 0.82rem;
-    font-family: system-ui, sans-serif;
-  }
+}
+:root[data-theme="dark"]{
+  --bg:#191817; --surface:#211f1e; --line:#35322f; --line-soft:#2b2927;
+  --fg:#eceae6; --fg-dim:#9a958d; --accent:#d9a066; --accent-soft:#2e2721;
+  --badge-bg:#2b2927; --code-bg:#262422; --warn:#e08a8a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",
+              system-ui,-apple-system,"Segoe UI",sans-serif;
+  line-height:1.75; font-size:16px;
+}
+.wrap{max-width:52rem; margin:0 auto; padding:3rem 1.25rem 6rem}
+.doc-head{border-bottom:1px solid var(--line); padding-bottom:1.5rem; margin-bottom:2rem}
+.doc-head h1{font-size:1.65rem; line-height:1.35; margin:0 0 .4rem}
+.doc-head .sub{color:var(--fg-dim); font-size:.9rem; margin:0}
+.generated{
+  margin-top:1rem; font-size:.78rem; color:var(--fg-dim);
+  border-left:2px solid var(--accent); padding-left:.7rem;
+}
+.node{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:1.1rem 1.2rem; margin:0 0 1rem;
+}
+.node .node{margin-top:1rem; margin-bottom:0; background:transparent;
+  border-style:dashed; border-color:var(--line-soft)}
+.node__head{display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap;
+  margin-bottom:.6rem}
+.node__title{font-size:1.05rem; margin:0; font-weight:650; flex:1 1 auto}
+.badge{
+  font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
+  background:var(--badge-bg); color:var(--fg-dim);
+  padding:.15rem .5rem; border-radius:4px; white-space:nowrap;
+}
+.node__id{font-size:.72rem; color:var(--fg-dim); text-decoration:none;
+  font-family:ui-monospace,"SFMono-Regular",Consolas,monospace}
+.node__id:hover{color:var(--accent)}
+.prose{margin:.5rem 0}
+.prose p{margin:.6rem 0}
+.prose ul,.prose ol{margin:.6rem 0; padding-left:1.4rem}
+.prose li{margin:.2rem 0}
+blockquote{margin:.7rem 0; padding:.1rem 0 .1rem .9rem;
+  border-left:3px solid var(--line); color:var(--fg-dim)}
+code{background:var(--code-bg); padding:.1rem .35rem; border-radius:4px;
+  font-family:ui-monospace,"SFMono-Regular",Consolas,monospace; font-size:.86em}
+pre{background:var(--code-bg); padding:.9rem 1rem; border-radius:8px;
+  overflow-x:auto; border:1px solid var(--line-soft)}
+pre code{background:none; padding:0; font-size:.82rem; line-height:1.6}
+.table-wrap{overflow-x:auto; margin:.7rem 0}
+table{border-collapse:collapse; width:100%; font-size:.88rem}
+th,td{border:1px solid var(--line); padding:.4rem .6rem; text-align:left;
+  vertical-align:top}
+th{background:var(--badge-bg); font-weight:600}
+table.attrs th{width:9rem; white-space:nowrap; color:var(--fg-dim);
+  font-weight:500; font-size:.82rem}
+a{color:var(--accent)}
+.ref{
+  text-decoration:none; border-bottom:1px solid var(--accent);
+  padding-bottom:1px;
+}
+.ref--dangling{color:var(--warn); border-bottom:1px dotted var(--warn)}
+.edges{display:flex; gap:.4rem; flex-wrap:wrap; align-items:center;
+  margin-top:.8rem; padding-top:.7rem; border-top:1px dashed var(--line-soft)}
+.edges__label{font-size:.72rem; color:var(--fg-dim); white-space:nowrap}
+.chip{
+  font-size:.75rem; background:var(--accent-soft); color:var(--accent);
+  padding:.15rem .55rem; border-radius:99px; text-decoration:none;
+  border:1px solid transparent;
+}
+.chip:hover{border-color:var(--accent)}
+:target{scroll-margin-top:1.5rem}
+:target > .node__head .node__title{color:var(--accent)}
 </style>
+</head>
+<body>
+<div class="wrap">
+<header class="doc-head">
+<h1>DAZ Studio の Content Library を VAB に取り込む</h1>
 
-<div class="shell">
-
-  <aside class="rail">
-    <p class="eyebrow">目次</p>
-    <nav>
-      <a href="#state">現在の状態</a>
-      <a href="#roots">コンテンツルートの棚卸し</a>
-      <a href="#problem">何が問題だったか</a>
-      <a href="#design">何を作ったか</a>
-      <a href="#bugs">途中で直した既存バグ</a>
-      <a href="#verify">検証したこと</a>
-      <a href="#repo">リポジトリと環境</a>
-      <a href="#open">未着手・判断待ち</a>
-      <a href="#japanese-search" style="padding-left:0.8rem;">└ 日本語検索（構想）</a>
-      <a href="#resume">再開手順</a>
-      <a href="#commands">コマンド早見表</a>
-    </nav>
-  </aside>
-
-  <main>
-
-    <header class="masthead">
-      <p class="eyebrow">引き継ぎ</p>
-      <h1>DAZ Studio の Content Library を VAB に取り込む</h1>
-      <p class="standfirst">
-        Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。2026-08-25 に<a href="#roots">コンテンツルートの棚卸し</a>を追記（調査のみ、コード変更なし）。
-      </p>
-      <div class="meta">
-        <span>2026-08-16 &ndash; 08-18 &middot; 追記 08-25</span>
-        <span class="mono">feature/content-library-indexing</span>
-        <span class="mono">最終コード変更 eb7bff9</span>
-      </div>
-    </header>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="state">
-      <h2>現在の状態</h2>
-
-      <div class="cards">
-        <div class="card">
-          <span class="k">インデックス済み</span>
-          <span class="v">3,239</span>
-          <span class="sub">作業前 1,620</span>
-        </div>
-        <div class="card">
-          <span class="k">新規に見えた製品</span>
-          <span class="v">1,619</span>
-          <span class="sub">cms-local 43 / filesystem 1,576</span>
-        </div>
-        <div class="card">
-          <span class="k">テスト</span>
-          <span class="v">41 / 41</span>
-          <span class="sub">全て green</span>
-        </div>
-        <div class="card">
-          <span class="k">push</span>
-          <span class="v small">fork へ完了</span>
-          <span class="sub">tbtomo/daz-content-browser</span>
-        </div>
-      </div>
-
-      <p>
-        作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない（理由は<a href="#design">次節</a>）。
-      </p>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="roots">
-      <h2>コンテンツルートの棚卸し（2026-08-25 追記）</h2>
-
-      <p>
-        利用者から現在のコンテンツ配置を教わったので、SQLite のインデックス内容と実ディスクを突き合わせた。<strong>コードは変更していない</strong>。この節は調査結果のみで、対処は<a href="#open">未着手</a>に積んである。
-      </p>
-
-      <div class="note">
-        <p class="eyebrow">前提</p>
-        <p>
-          走査対象のルートは <code>.env</code> ではなく <strong>CMS の <code>dzcontent."tblBasePath"</code></strong> が真実（<code>daz_db_analyzer.get_content_roots()</code>）。この調査時点で DAZ Studio が起動しておらず PostgreSQL に接続できなかったため、<em>いま CMS が何本返すかは未確認</em>。以下の数字は最後のスキャン結果（SQLite の <code>content_dirs</code>）と実ディスクの実測に基づく。
-        </p>
-      </div>
-
-      <h3>ルートは 4 本ではなく実質 3 本</h3>
-
-      <p>
-        利用者の挙げた 4 本のうち 1 本はジャンクションで、実体は別ルートと同一だった。
-      </p>
-
-      <pre><code>C:\Users\Public\Documents\My DAZ 3D Library  ->  D:\DAZ 3D\My DAZ 3D Library   (junction)</code></pre>
-
-      <p>
-        <code>dedupe_roots()</code> は <code>Path.resolve()</code> を通すのでジャンクションは解決される。CMS が両方を base path に登録していても二重走査にはならない。実際 SQLite の <code>content_dirs</code> は全て解決後の <code>D:\DAZ 3D\My DAZ 3D Library\…</code> で記録されていた。
-      </p>
-
-      <h3>ルート別の内訳</h3>
-
-      <div class="tablewrap">
-        <table>
-          <thead>
-            <tr><th>ルート</th><th class="num">走査対象ファイル</th><th class="num">filesystem 製品</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="mono">D:\DAZ 3D\Studio\My Library</td>
-              <td class="num">.duf 107,896 / Poser 241</td>
-              <td class="num">1,566</td>
-            </tr>
-            <tr>
-              <td class="mono">D:\DAZ 3D\My DAZ 3D Library<br><span style="color:var(--muted); font-size:0.85em;">= Public のジャンクション先</span></td>
-              <td class="num">.duf 151,843 / Poser 3,363</td>
-              <td class="num">12</td>
-            </tr>
-            <tr>
-              <td class="mono">D:\Poser\My Poser Library</td>
-              <td class="num">.duf 0 / Poser 85</td>
-              <td class="num">1</td>
-            </tr>
-            <tr>
-              <td class="mono">C:\Users\tabby\OneDrive\…\Studio\My Library</td>
-              <td class="num">.duf 0 / Poser 0</td>
-              <td class="num">0</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <ul>
-        <li>
-          <strong><code>My DAZ 3D Library</code> の 12 製品は正常。</strong>ファイル数は最大だが、ここは DIM がインストールする場所でほぼ全ファイルが CMS 登録済み。tracked として差し引かれ、<span class="chip store">daz-store</span> 側 1,620 製品として既に入っている。
-        </li>
-        <li>
-          <strong>OneDrive のルートが 0 なのも正常。</strong>中身は <code>.dsf</code> 129 件のみ（<code>data/</code> 相当のサポートファイル）で、ユーザ向けファイルが 1 つも無い。
-        </li>
-      </ul>
-
-      <h3 id="poser-gap">未解決：Poser ライブラリが 1 製品しか拾えていない</h3>
-
-      <p>
-        <code>D:\Poser\My Poser Library</code> には製品フォルダが 4 つあるが、インデックスに入ったのは <span class="mono">Woman Inside</span>（<code>Darkseal_WomanInside</code> と <code>…2</code> を 1 製品に統合）だけ。<code>GRUNGEON Equipment Pack 6_Poser</code> と <code>davo_chamber7_Poser</code>（合わせて .pz2/.pp2 65 件）が落ちている。
-      </p>
-
-      <p>
-        疑わしいのは tracked 判定のキー。<code>load_tracked_files()</code> と <code>collect_untracked_dirs()</code> は <strong>(ルート相対パス, ファイル名) だけで照合していて、どのルート配下かを見ていない</strong>。
-      </p>
-
-      <pre><code># filesystem_scanner.collect_untracked_dirs()
-key = (str(rel.parent).replace("\\", "/").lower(), rel.name.lower())</code></pre>
-
-      <p>
-        この 2 製品は DS 版が <code>My Library</code> 側に CMS 登録済みで、Poser 版と相対パスが衝突した可能性が高い。ただし「CMS が Poser ルートも直接登録しているので単に tracked だった」という素直な説明も成り立ち、<strong>CMS に接続できないうちは確定できない</strong>。切り分けは <code>get_all_content_paths()</code> の結果に Poser 側の相対パスが含まれるかを見ればよい。
-      </p>
-
-      <p>
-        併せて、<code>collect_untracked_dirs()</code> は末尾で <code>tracked &gt; 0</code> のディレクトリを丸ごと捨てる。1 ファイルでも衝突すると同じディレクトリの未登録ファイルまで消えるので、キーをルート込み（絶対パス）にする修正はこの捨て方の見直しとセットで考えること。
-      </p>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="problem">
-      <h2>何が問題だったか</h2>
-
-      <p>
-        パイプライン全体が <strong>DAZ ストアの SKU をキーにしていた</strong>。<code>daz_db_analyzer.get_all_skus()</code> が <code>WHERE token IS NOT NULL AND token != ''</code> で絞っていたため、SKU を持たないコンテンツは PostgreSQL &rarr; SQLite &rarr; ChromaDB のどこにも入らなかった。
-      </p>
-
-      <p>
-        DAZ Studio の <strong>Smart Content</strong> ペインは CMS データベースが実体で、<strong>Content Library</strong> ペインはコンテンツディレクトリの生のフォルダツリー。つまり後者にしか現れないものが丸ごと欠落していた。実 CMS・実ライブラリに接続して測った結果:
-      </p>
-
-      <div class="tablewrap">
-        <table>
-          <thead>
-            <tr><th>ギャップ</th><th>実測</th><th>備考</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>CMS にはあるが <code>token</code> が空の製品</td>
-              <td class="num">43 製品</td>
-              <td>Renderosity 等の他社製品</td>
-            </tr>
-            <tr>
-              <td>CMS に登録すら無いディスク上のファイル</td>
-              <td class="num">109,127 件</td>
-              <td>ユーザ向けファイル 264,162 件中 41%、9,814 ディレクトリ</td>
-            </tr>
-            <tr>
-              <td>Poser 形式ライブラリ 2 ルート</td>
-              <td class="num">.duf 0 件</td>
-              <td>中身は <code>.pz2</code>/<code>.cr2</code>/<code>.pp2</code>。CMS にも <code>.pz2</code> は 1,047 件のみ</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="note">
-        <p class="eyebrow">設計上の制約</p>
-        <p>
-          <code>ui/src</code> は未チェックアウトの git submodule（<span class="mono">bmf-daz-content-browser-ui</span>）で、手元にはビルド済みの <code>ui/dist</code> しか無い。<strong>UI 改造ゼロで成立させること</strong>が前提条件になった。結果として「合成 SKU で通常製品と同じ行を作る」方針を採っている。
-        </p>
-      </div>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="design">
-      <h2>何を作ったか</h2>
-
-      <p>
-        SQLite の製品行に <code>source</code> 列を足し、3 系統を同一スキーマに正規化した。合成 SKU を使うので、既存の一覧・検索・フィルタ・サムネイル導線がそのまま動く。
-      </p>
-
-      <div class="tablewrap">
-        <table>
-          <thead>
-            <tr><th>source</th><th>SKU 形式</th><th>由来</th><th>画像</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="chip store">daz-store</span></td>
-              <td class="mono">DAZ token</td>
-              <td>従来どおり。daz3d.com をスクレイプ</td>
-              <td>ストアの CDN</td>
-            </tr>
-            <tr>
-              <td><span class="chip local">cms-local</span></td>
-              <td class="mono">cms-&lt;product.id&gt;</td>
-              <td>CMS にあるがストア SKU 無し</td>
-              <td>ディスク上の隣接 PNG</td>
-            </tr>
-            <tr>
-              <td><span class="chip fs">filesystem</span></td>
-              <td class="mono">fs-&lt;sha1&gt;</td>
-              <td>CMS に無い。ディスク走査で発見</td>
-              <td>ディスク上の隣接 PNG</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p>
-        ストアページが無い製品は、DAZ Studio がアセット横に書く PNG をサムネイルにし、<code>/api/v1/assets/thumbnail</code> 経由で配信する。<code>_format_product()</code> が <code>image_url</code> を組み立てるので、UI から見れば通常の製品と区別がつかない。
-      </p>
-
-      <h3>パイプラインのフェーズ</h3>
-
-      <p>
-        <code>--phase</code> に <code>scan</code> を追加した。<code>all</code>（既定）は <span class="mono">etl &rarr; scan &rarr; embed</span> の順に実行する。WebUI の Update ボタンは <code>run_update_flow</code> 経由で <code>phase='all'</code> を呼ぶので、<strong>ボタン 1 つで全部走る</strong>。
-      </p>
-
-      <h3>ファイルシステム走査の要点</h3>
-
-      <ul>
-        <li><strong>対象拡張子</strong> — <code>.duf</code> に加え Poser 形式 10 種。Poser 形式は <code>Runtime/Libraries/**</code> 配下に限定。<code>data/</code> は除外。</li>
-        <li><strong>入れ子ルートの除去</strong> — このマシンでは <code>My Library</code> とその配下 3 ディレクトリが両方 root 登録されていた。最も浅いものだけ残さないと二重カウントになる。</li>
-        <li><strong>ラッパーディレクトリの除去</strong> — 同じ製品が「ルートに統合して展開」と「アーカイブのフォルダごと展開」で二重に入っているケースが多数あった。CMS の正規トップレベル名を使って剥がし、1 製品に畳んでいる（これで 2,933 &rarr; 1,580 製品）。</li>
-        <li><strong>SKU の安定性</strong> — SKU はパスそのものではなくラッパー除去後の相対パスから作る。片方のコピーを消しても SKU が変わらない。</li>
-      </ul>
-
-      <h3>主なファイル</h3>
-
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
-          <tbody>
-            <tr><td class="mono">src/managers/filesystem_scanner.py</td><td><strong>新規。</strong>走査・グルーピング・製品行生成。約 700 行</td></tr>
-            <tr><td class="mono">src/managers/daz_db_analyzer.py</td><td><code>SKU_EXPR</code> の導入。合成 SKU で CMS を引く</td></tr>
-            <tr><td class="mono">src/managers/postgres_db_manager.py</td><td>scan フェーズ、スクレイプの分岐、サムネイル解決</td></tr>
-            <tr><td class="mono">src/managers/sqlite_db_manager.py</td><td><code>source</code> / <code>content_dirs</code> / <code>thumbnail_path</code> 列の追加</td></tr>
-            <tr><td class="mono">src/server.py</td><td>サムネイル URL 合成、fs 製品のアセット列挙、フォルダで開く導線</td></tr>
-            <tr><td class="mono">src/managers/daz_script_server.py</td><td><code>browse-folder</code> スクリプトの追加</td></tr>
-            <tr><td class="mono">analyze_content_roots.py</td><td>新モジュールの薄い CLI ラッパに変更。ヒューリスティック調整用</td></tr>
-            <tr><td class="mono">tests/test_filesystem_scanner.py</td><td><strong>新規。</strong>12 テスト</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="bugs">
-      <h2>途中で直した既存バグ</h2>
-
-      <p>今回の機能追加とは独立に、元から存在していた不具合を 4 件踏んだので直してある。上流にも同じ問題がある。</p>
-
-      <div class="stack">
-        <details open>
-          <summary>サムネイル API がルート順で潰されていた</summary>
-          <p>
-            <code>/api/v1/assets/thumbnail</code> が <code>/api/v1/assets/{sku}</code> より<strong>後に</strong>宣言されていた。FastAPI は宣言順にマッチするため、全てのサムネイル要求がアセット一覧エンドポイントに流れ、画像ではなく <code>{"sku":"thumbnail","files":[]}</code> を返していた。ストア製品は CDN 画像を使うため露見していなかったが、ローカルサムネイルはこれに依存するので致命的。宣言順を入れ替えて解決。
-          </p>
-        </details>
-
-        <details>
-          <summary>グルーピングが O(n²) で完走しなかった</summary>
-          <p>
-            <code>merge_into_ancestors()</code> はマージのたびに全ルートを再走査する実装で、未登録 9,814 ディレクトリでは 10 分回しても終わらなかった。パスをトライ木に入れてボトムアップに 1 度だけ走査する方式に書き直し、<strong>約 2 秒</strong>になった。判定基準（深さ・カテゴリ語の除外）は元の実装と同じ。
-          </p>
-        </details>
-
-        <details>
-          <summary>cp932 コンソールでインデックス処理ごと落ちる</summary>
-          <p>
-            rich の進捗スピナーが使う点字文字を cp932 が encode できず <code>UnicodeEncodeError</code> で異常終了していた。製品名の en dash でも同様。CLI 起動時に stdout/stderr を <code>errors="replace"</code> で再構成して回避。
-          </p>
-        </details>
-
-        <details>
-          <summary>検索結果が常に 500 件で頭打ちになっていた</summary>
-          <p>
-            <code>/api/v1/search</code> は ChromaDB から近傍 500 件を取得したうえで、<strong>その後に</strong> <code>min_relevance</code> を掛けていた。500 は該当件数ではなく候補プールの固定サイズなので、実際に何件マッチしようと表示は 500 で止まる。製品が 1,620 件だった頃は露見しにくかったが、3,239 件になって顕在化した。
-          </p>
-          <p>
-            UI 上では「Min match: any」も「50%+」も揃って 500 件と出て、プールより下を切る「70%+」でだけ本当の件数（2 件）が出る、という不可解な挙動になっていた。<code>UISearchRequest.max_results</code> の既定値を 5000 に上げ、絞り込みをプールサイズではなく閾値が担うようにして解決。
-          </p>
-          <div class="tablewrap">
-            <table>
-              <thead><tr><th>Min match</th><th>変更前</th><th>変更後</th></tr></thead>
-              <tbody>
-                <tr><td>any</td><td class="num">500</td><td class="num">3,239</td></tr>
-                <tr><td>50%+</td><td class="num">500</td><td class="num">3,236</td></tr>
-                <tr><td>60%+</td><td class="num">&mdash;</td><td class="num">72</td></tr>
-                <tr><td>70%+</td><td class="num">2</td><td class="num">2</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p>
-            50%+ が 3,236 件という数字が示すとおり、埋め込みの類似度は 0.5 前後に大半が集まっている。実用的な絞り込みが起きるのは 60&ndash;70% の帯。実測コストは応答 0.28 秒 &rarr; 0.60 秒、ペイロード 270KB &rarr; 1.88MB（"office" で計測、dress / forest でも同等）。ビルド済み UI は <code>max_results</code> を送らないので、このサーバ側既定値が全ての UI 検索に効く。結果を 1 応答で返してページングはクライアント側という設計なので、製品数が桁違いに増えたらプールを広げるのではなくサーバページングを入れるべき。
-          </p>
-        </details>
-      </div>
-
-      <p>
-        このほか、<code>SKU_EXPR</code> をそのまま <code>WHERE</code> に使うと <code>dzcontent.content</code>（70 万行）の全走査になるため、アセット取得は <code>p.token</code> / <code>p.id</code> という索引の効く列で引くようにしてある。製品詳細を開くたびに全走査、という事態は避けられている（実測 0.02 秒）。
-      </p>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="verify">
-      <h2>検証したこと</h2>
-
-      <ul>
-        <li><strong>テスト</strong> — <code>pytest tests/</code> 41 件 green（新規 12 件を含む）。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認。</li>
-        <li><strong>実データでの ETL</strong> — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決。</li>
-        <li><strong>実データでの走査</strong> — filesystem 1,576 製品を登録。1,542 件（98%）にサムネイルあり。</li>
-        <li><strong>API</strong> — <code>/info</code> の内訳、意味検索でローカル製品がヒットすること、<code>/assets/{sku}</code> が fs 製品でディスクからファイルを返すこと、サムネイルが実 PNG（HTTP 200 / image&#47;png）で返ることを確認。</li>
-        <li><strong>UI</strong> — ブラウザで表示確認。UI 無改造のまま 3,239 製品が実サムネイル付きで並ぶ。</li>
-        <li><strong>Update ボタン</strong> — <code>POST /api/v1/update</code> を実際に叩き、etl &rarr; scan &rarr; embed が走り差分 0 件で正常終了することを確認。走査中の進捗表示も追加後に再確認済み。</li>
-        <li><strong>DAZ Studio 連携</strong> — Script Server 2.9.0 稼働中に <code>browse-folder</code> を実行し成功。実在したメソッドは <code>browseToPath</code>（<code>browseToFolder</code>/<code>browseToDir</code> は存在せず、候補を並べたフォールバックが効いた）。</li>
-      </ul>
-
-      <div class="note">
-        <p class="eyebrow">目視未確認</p>
-        <p>
-          <code>browse-folder</code> は API が成功を返したところまで確認済み。DAZ Studio の Content Library ペインが実際に該当フォルダへ移動したかは画面が見えないため未確認。気になる場合は fs 製品で「開く」を押して確認されたい。
-        </p>
-      </div>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="repo">
-      <h2>リポジトリと環境</h2>
-
-      <h3>git remote</h3>
-
-      <p>
-        元は上流本家をそのまま <code>origin</code> にしていたため push できなかった。fork を作って張り替えてある。
-      </p>
-
-      <pre><code>origin    https://github.com/tbtomo/daz-content-browser.git        ← fork (public)
+</header>
+<section class="node node--meta depth-0" id="meta">
+<header class="node__head">
+<span class="badge">meta</span>
+<h2 class="node__title">この文書について</h2>
+<a class="node__id" href="#meta">meta</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>indexed_products</th><td><code>3239</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;eb7bff9(検索の候補プールを 500 → 5000 に)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-25(コンテンツルートの棚卸し。調査のみ、コード変更なし)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 2026-08-25&quot;</code></td></tr><tr><th>source_document</th><td><code>&quot;Handover.html(この .pyn の元になった手書きの HTML)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>tests_passing</th><td><code>41</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><p>この文書は <code>Handover.html</code> を PYN(<code>.pyn</code>)へ書き換えたものです。節見出しはすべてノードになっており、HTML の <code>id</code> 属性がそのままノード ID になっています(<code>#state</code> → <code>state</code> など)。</p>
+<p>書き換えは <code>python -m pyn patch Handover.pyn --ops ops.json</code> が安全です(ID 宛なので行番号がずれても当たり、失敗時は文書が変更されません)。<code>#</code> コメントは作業メモ扱いで、射影を再生成すると消えます。</p></div>
+</section>
+<section class="node node--goal depth-0" id="goal">
+<header class="node__head">
+<span class="badge">goal</span>
+<h2 class="node__title">DAZ Studio の Content Library を VAB に取り込む</h2>
+<a class="node__id" href="#goal">goal</a>
+</header>
+<div class="prose"><p>Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。</p>
+<p>2026-08-25 に <a class="ref" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a> を追記(調査のみ、コード変更なし)。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a></div>
+</section>
+<section class="node node--section depth-0" id="state">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">現在の状態</h2>
+<a class="node__id" href="#state">state</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>indexed</th><td><code>3239</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1619</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1576</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;41 / 41 green&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th>指標</th><th>値</th><th>補足</th></tr></thead><tbody><tr><td>インデックス済み</td><td>3,239</td><td>作業前 1,620</td></tr><tr><td>新規に見えた製品</td><td>1,619</td><td>cms-local 43 / filesystem 1,576</td></tr><tr><td>テスト</td><td>41 / 41</td><td>全て green</td></tr><tr><td>push</td><td>fork へ完了</td><td>tbtomo/daz-content-browser</td></tr></tbody></table></div>
+<p>作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない(理由は <a class="ref" href="#design">何を作ったか</a>)。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#design">何を作ったか</a></div>
+</section>
+<section class="node node--section depth-0" id="roots">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">コンテンツルートの棚卸し(2026-08-25 追記)</h2>
+<a class="node__id" href="#roots">roots</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>added</th><td><code>2026-08-25</code></td></tr><tr><th>code_changed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="prose"><p>利用者から現在のコンテンツ配置を教わったので、SQLite のインデックス内容と実ディスクを突き合わせた。<strong>コードは変更していない</strong>。この節は調査結果のみで、対処は <a class="ref" href="#open">未着手・判断待ち</a> に積んである。</p>
+<p>前提として、走査対象のルートは <code>.env</code> ではなく <strong>CMS の <code>dzcontent.&quot;tblBasePath&quot;</code></strong> が真実(<code>daz_db_analyzer.get_content_roots()</code>)。この調査時点で DAZ Studio が起動しておらず PostgreSQL に接続できなかったため、<em>いま CMS が何本返すかは未確認</em>。以下の数字は最後のスキャン結果(SQLite の <code>content_dirs</code>)と実ディスクの実測に基づく。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#open">未着手・判断待ち</a></div>
+<section class="node node--section depth-1" id="roots-junction">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">ルートは 4 本ではなく実質 3 本</h2>
+<a class="node__id" href="#roots-junction">roots-junction</a>
+</header>
+<div class="prose"><p>利用者の挙げた 4 本のうち 1 本はジャンクションで、実体は別ルートと同一だった。</p>
+<pre><code>C:\Users\Public\Documents\My DAZ 3D Library  -&gt;  D:\DAZ 3D\My DAZ 3D Library   (junction)</code></pre>
+<p><code>dedupe_roots()</code> は <code>Path.resolve()</code> を通すのでジャンクションは解決される。CMS が両方を base path に登録していても二重走査にはならない。実際 SQLite の <code>content_dirs</code> は全て解決後の <code>D:\DAZ 3D\My DAZ 3D Library\…</code> で記録されていた。</p></div>
+</section>
+<section class="node node--section depth-1" id="roots-breakdown">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">ルート別の内訳</h2>
+<a class="node__id" href="#roots-breakdown">roots-breakdown</a>
+</header>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th>ルート</th><th>走査対象ファイル</th><th>filesystem 製品</th></tr></thead><tbody><tr><td><code>D:\DAZ 3D\Studio\My Library</code></td><td>.duf 107,896 / Poser 241</td><td>1,566</td></tr><tr><td><code>D:\DAZ 3D\My DAZ 3D Library</code>(= Public のジャンクション先)</td><td>.duf 151,843 / Poser 3,363</td><td>12</td></tr><tr><td><code>D:\Poser\My Poser Library</code></td><td>.duf 0 / Poser 85</td><td>1</td></tr><tr><td><code>C:\Users\tabby\OneDrive\…\Studio\My Library</code></td><td>.duf 0 / Poser 0</td><td>0</td></tr></tbody></table></div>
+<ul><li><strong><code>My DAZ 3D Library</code> の 12 製品は正常。</strong> ファイル数は最大だが、ここは DIM がインストールする場所でほぼ全ファイルが CMS 登録済み。tracked として差し引かれ、daz-store 側 1,620 製品として既に入っている</li><li><strong>OneDrive のルートが 0 なのも正常。</strong> 中身は <code>.dsf</code> 129 件のみ(<code>data/</code> 相当のサポートファイル)で、ユーザ向けファイルが 1 つも無い</li></ul></div>
+</section>
+<section class="node node--issue depth-1" id="poser-gap">
+<header class="node__head">
+<span class="badge">issue</span>
+<h2 class="node__title">未解決:Poser ライブラリが 1 製品しか拾えていない</h2>
+<a class="node__id" href="#poser-gap">poser-gap</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>blocked_by</th><td><code>&quot;CMS(PostgreSQL)に接続できないと確定できない&quot;</code></td></tr><tr><th>missing_files</th><td><code>65</code></td></tr><tr><th>missing_products</th><td><code>[&quot;GRUNGEON Equipment Pack 6_Poser&quot;, davo_chamber7_Poser]</code></td></tr><tr><th>root</th><td><code>&quot;D:\\Poser\\My Poser Library&quot;</code></td></tr><tr><th>status</th><td><code>open</code></td></tr></tbody></table></div>
+<div class="prose"><p><code>D:\Poser\My Poser Library</code> には製品フォルダが 4 つあるが、インデックスに入ったのは Woman Inside(<code>Darkseal_WomanInside</code> と <code>…2</code> を 1 製品に統合)だけ。<code>GRUNGEON Equipment Pack 6_Poser</code> と <code>davo_chamber7_Poser</code>(合わせて .pz2/.pp2 65 件)が落ちている。</p>
+<p>疑わしいのは tracked 判定のキー。<code>load_tracked_files()</code> と <code>collect_untracked_dirs()</code> は <strong>(ルート相対パス, ファイル名) だけで照合していて、どのルート配下かを見ていない</strong>。</p>
+<pre><code class="lang-python"># filesystem_scanner.collect_untracked_dirs()
+key = (str(rel.parent).replace(&quot;\\&quot;, &quot;/&quot;).lower(), rel.name.lower())</code></pre>
+<p>この 2 製品は DS 版が <code>My Library</code> 側に CMS 登録済みで、Poser 版と相対パスが衝突した可能性が高い。ただし「CMS が Poser ルートも直接登録しているので単に tracked だった」という素直な説明も成り立ち、<strong>CMS に接続できないうちは確定できない</strong>。切り分けは <code>get_all_content_paths()</code> の結果に Poser 側の相対パスが含まれるかを見ればよい。</p>
+<p>併せて、<code>collect_untracked_dirs()</code> は末尾で tracked が 1 以上のディレクトリを丸ごと捨てる。1 ファイルでも衝突すると同じディレクトリの未登録ファイルまで消えるので、キーをルート込み(絶対パス)にする修正はこの捨て方の見直しとセットで考えること。</p></div>
+</section>
+</section>
+<section class="node node--section depth-0" id="problem">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">何が問題だったか</h2>
+<a class="node__id" href="#problem">problem</a>
+</header>
+<div class="prose"><p>パイプライン全体が <strong>DAZ ストアの SKU をキーにしていた</strong>。<code>daz_db_analyzer.get_all_skus()</code> が <code>WHERE token IS NOT NULL AND token != &#x27;&#x27;</code> で絞っていたため、SKU を持たないコンテンツは PostgreSQL → SQLite → ChromaDB のどこにも入らなかった。</p>
+<p>DAZ Studio の <strong>Smart Content</strong> ペインは CMS データベースが実体で、<strong>Content Library</strong> ペインはコンテンツディレクトリの生のフォルダツリー。つまり後者にしか現れないものが丸ごと欠落していた。実 CMS・実ライブラリに接続して測った結果:</p>
+<div class="table-wrap"><table><thead><tr><th>ギャップ</th><th>実測</th><th>備考</th></tr></thead><tbody><tr><td>CMS にはあるが <code>token</code> が空の製品</td><td>43 製品</td><td>Renderosity 等の他社製品</td></tr><tr><td>CMS に登録すら無いディスク上のファイル</td><td>109,127 件</td><td>ユーザ向けファイル 264,162 件中 41%、9,814 ディレクトリ</td></tr><tr><td>Poser 形式ライブラリ 2 ルート</td><td>.duf 0 件</td><td>中身は <code>.pz2</code>/<code>.cr2</code>/<code>.pp2</code>。CMS にも <code>.pz2</code> は 1,047 件のみ</td></tr></tbody></table></div>
+<p>設計上の制約として、<code>ui/src</code> は未チェックアウトの git submodule(bmf-daz-content-browser-ui)で、手元にはビルド済みの <code>ui/dist</code> しか無い。<strong>UI 改造ゼロで成立させること</strong>が前提条件になった。結果として「合成 SKU で通常製品と同じ行を作る」方針を採っている。</p></div>
+</section>
+<section class="node node--section depth-0" id="design">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">何を作ったか</h2>
+<a class="node__id" href="#design">design</a>
+</header>
+<div class="prose"><p>SQLite の製品行に <code>source</code> 列を足し、3 系統を同一スキーマに正規化した。合成 SKU を使うので、既存の一覧・検索・フィルタ・サムネイル導線がそのまま動く。</p>
+<div class="table-wrap"><table><thead><tr><th>source</th><th>SKU 形式</th><th>由来</th><th>画像</th></tr></thead><tbody><tr><td>daz-store</td><td><code>DAZ token</code></td><td>従来どおり。daz3d.com をスクレイプ</td><td>ストアの CDN</td></tr><tr><td>cms-local</td><td><code>cms-&lt;product.id&gt;</code></td><td>CMS にあるがストア SKU 無し</td><td>ディスク上の隣接 PNG</td></tr><tr><td>filesystem</td><td><code>fs-&lt;sha1&gt;</code></td><td>CMS に無い。ディスク走査で発見</td><td>ディスク上の隣接 PNG</td></tr></tbody></table></div>
+<p>ストアページが無い製品は、DAZ Studio がアセット横に書く PNG をサムネイルにし、<code>/api/v1/assets/thumbnail</code> 経由で配信する。<code>_format_product()</code> が <code>image_url</code> を組み立てるので、UI から見れば通常の製品と区別がつかない。</p></div>
+<section class="node node--section depth-1" id="design-phases">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">パイプラインのフェーズ</h2>
+<a class="node__id" href="#design-phases">design-phases</a>
+</header>
+<div class="prose"><p><code>--phase</code> に <code>scan</code> を追加した。<code>all</code>(既定)は etl → scan → embed の順に実行する。WebUI の Update ボタンは <code>run_update_flow</code> 経由で <code>phase=&#x27;all&#x27;</code> を呼ぶので、<strong>ボタン 1 つで全部走る</strong>。</p></div>
+</section>
+<section class="node node--section depth-1" id="design-scan">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">ファイルシステム走査の要点</h2>
+<a class="node__id" href="#design-scan">design-scan</a>
+</header>
+<div class="prose"><ul><li><strong>対象拡張子</strong> — <code>.duf</code> に加え Poser 形式 10 種。Poser 形式は <code>Runtime/Libraries/**</code> 配下に限定。<code>data/</code> は除外</li><li><strong>入れ子ルートの除去</strong> — このマシンでは <code>My Library</code> とその配下 3 ディレクトリが両方 root 登録されていた。最も浅いものだけ残さないと二重カウントになる</li><li><strong>ラッパーディレクトリの除去</strong> — 同じ製品が「ルートに統合して展開」と「アーカイブのフォルダごと展開」で二重に入っているケースが多数あった。CMS の正規トップレベル名を使って剥がし、1 製品に畳んでいる(これで 2,933 → 1,580 製品)</li><li><strong>SKU の安定性</strong> — SKU はパスそのものではなくラッパー除去後の相対パスから作る。片方のコピーを消しても SKU が変わらない</li></ul></div>
+</section>
+<section class="node node--section depth-1" id="design-files">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">主なファイル</h2>
+<a class="node__id" href="#design-files">design-files</a>
+</header>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th>ファイル</th><th>役割</th></tr></thead><tbody><tr><td><code>src/managers/filesystem_scanner.py</code></td><td><strong>新規。</strong> 走査・グルーピング・製品行生成。約 700 行</td></tr><tr><td><code>src/managers/daz_db_analyzer.py</code></td><td><code>SKU_EXPR</code> の導入。合成 SKU で CMS を引く</td></tr><tr><td><code>src/managers/postgres_db_manager.py</code></td><td>scan フェーズ、スクレイプの分岐、サムネイル解決</td></tr><tr><td><code>src/managers/sqlite_db_manager.py</code></td><td><code>source</code> / <code>content_dirs</code> / <code>thumbnail_path</code> 列の追加</td></tr><tr><td><code>src/server.py</code></td><td>サムネイル URL 合成、fs 製品のアセット列挙、フォルダで開く導線</td></tr><tr><td><code>src/managers/daz_script_server.py</code></td><td><code>browse-folder</code> スクリプトの追加</td></tr><tr><td><code>analyze_content_roots.py</code></td><td>新モジュールの薄い CLI ラッパに変更。ヒューリスティック調整用</td></tr><tr><td><code>tests/test_filesystem_scanner.py</code></td><td><strong>新規。</strong> 12 テスト</td></tr></tbody></table></div></div>
+</section>
+</section>
+<section class="node node--section depth-0" id="bugs">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">途中で直した既存バグ</h2>
+<a class="node__id" href="#bugs">bugs</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>also_in_upstream</th><td><code>true</code></td></tr><tr><th>count</th><td><code>4</code></td></tr></tbody></table></div>
+<div class="prose"><p>今回の機能追加とは独立に、元から存在していた不具合を 4 件踏んだので直してある。上流にも同じ問題がある。</p>
+<p>このほか、<code>SKU_EXPR</code> をそのまま <code>WHERE</code> に使うと <code>dzcontent.content</code>(70 万行)の全走査になるため、アセット取得は <code>p.token</code> / <code>p.id</code> という索引の効く列で引くようにしてある。製品詳細を開くたびに全走査、という事態は避けられている(実測 0.02 秒)。</p></div>
+<section class="node node--bug depth-1" id="bug-thumbnail-route">
+<header class="node__head">
+<span class="badge">bug</span>
+<h2 class="node__title">サムネイル API がルート順で潰されていた</h2>
+<a class="node__id" href="#bug-thumbnail-route">bug-thumbnail-route</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>fixed</th><td><code>true</code></td></tr></tbody></table></div>
+<div class="prose"><p><code>/api/v1/assets/thumbnail</code> が <code>/api/v1/assets/{sku}</code> より<strong>後に</strong>宣言されていた。FastAPI は宣言順にマッチするため、全てのサムネイル要求がアセット一覧エンドポイントに流れ、画像ではなく <code>{&quot;sku&quot;:&quot;thumbnail&quot;,&quot;files&quot;:[]}</code> を返していた。ストア製品は CDN 画像を使うため露見していなかったが、ローカルサムネイルはこれに依存するので致命的。宣言順を入れ替えて解決。</p></div>
+</section>
+<section class="node node--bug depth-1" id="bug-grouping-o2">
+<header class="node__head">
+<span class="badge">bug</span>
+<h2 class="node__title">グルーピングが O(n²) で完走しなかった</h2>
+<a class="node__id" href="#bug-grouping-o2">bug-grouping-o2</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>after</th><td><code>&quot;約 2 秒&quot;</code></td></tr><tr><th>before</th><td><code>&quot;10 分回しても終わらない&quot;</code></td></tr><tr><th>fixed</th><td><code>true</code></td></tr></tbody></table></div>
+<div class="prose"><p><code>merge_into_ancestors()</code> はマージのたびに全ルートを再走査する実装で、未登録 9,814 ディレクトリでは 10 分回しても終わらなかった。パスをトライ木に入れてボトムアップに 1 度だけ走査する方式に書き直し、<strong>約 2 秒</strong>になった。判定基準(深さ・カテゴリ語の除外)は元の実装と同じ。</p></div>
+</section>
+<section class="node node--bug depth-1" id="bug-cp932">
+<header class="node__head">
+<span class="badge">bug</span>
+<h2 class="node__title">cp932 コンソールでインデックス処理ごと落ちる</h2>
+<a class="node__id" href="#bug-cp932">bug-cp932</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>fixed</th><td><code>true</code></td></tr></tbody></table></div>
+<div class="prose"><p>rich の進捗スピナーが使う点字文字を cp932 が encode できず <code>UnicodeEncodeError</code> で異常終了していた。製品名の en dash でも同様。CLI 起動時に stdout/stderr を <code>errors=&quot;replace&quot;</code> で再構成して回避。</p></div>
+</section>
+<section class="node node--bug depth-1" id="bug-search-cap">
+<header class="node__head">
+<span class="badge">bug</span>
+<h2 class="node__title">検索結果が常に 500 件で頭打ちになっていた</h2>
+<a class="node__id" href="#bug-search-cap">bug-search-cap</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>commit</th><td><code>eb7bff9</code></td></tr><tr><th>fix</th><td><code>&quot;UISearchRequest.max_results の既定値を 500 → 5000&quot;</code></td></tr><tr><th>fixed</th><td><code>true</code></td></tr></tbody></table></div>
+<div class="prose"><p><code>/api/v1/search</code> は ChromaDB から近傍 500 件を取得したうえで、<strong>その後に</strong> <code>min_relevance</code> を掛けていた。500 は該当件数ではなく候補プールの固定サイズなので、実際に何件マッチしようと表示は 500 で止まる。製品が 1,620 件だった頃は露見しにくかったが、3,239 件になって顕在化した。</p>
+<p>UI 上では「Min match: any」も「50%+」も揃って 500 件と出て、プールより下を切る「70%+」でだけ本当の件数(2 件)が出る、という不可解な挙動になっていた。<code>UISearchRequest.max_results</code> の既定値を 5000 に上げ、絞り込みをプールサイズではなく閾値が担うようにして解決。</p>
+<div class="table-wrap"><table><thead><tr><th>Min match</th><th>変更前</th><th>変更後</th></tr></thead><tbody><tr><td>any</td><td>500</td><td>3,239</td></tr><tr><td>50%+</td><td>500</td><td>3,236</td></tr><tr><td>60%+</td><td>—</td><td>72</td></tr><tr><td>70%+</td><td>2</td><td>2</td></tr></tbody></table></div>
+<p>50%+ が 3,236 件という数字が示すとおり、埋め込みの類似度は 0.5 前後に大半が集まっている。実用的な絞り込みが起きるのは 60〜70% の帯。実測コストは応答 0.28 秒 → 0.60 秒、ペイロード 270KB → 1.88MB("office" で計測、dress / forest でも同等)。ビルド済み UI は <code>max_results</code> を送らないので、このサーバ側既定値が全ての UI 検索に効く。結果を 1 応答で返してページングはクライアント側という設計なので、製品数が桁違いに増えたらプールを広げるのではなくサーバページングを入れるべき。</p></div>
+</section>
+</section>
+<section class="node node--section depth-0" id="verify">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">検証したこと</h2>
+<a class="node__id" href="#verify">verify</a>
+</header>
+<div class="prose"><ul><li><strong>テスト</strong> — <code>pytest tests/</code> 41 件 green(新規 12 件を含む)。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認</li><li><strong>実データでの ETL</strong> — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決</li><li><strong>実データでの走査</strong> — filesystem 1,576 製品を登録。1,542 件(98%)にサムネイルあり</li><li><strong>API</strong> — <code>/info</code> の内訳、意味検索でローカル製品がヒットすること、<code>/assets/{sku}</code> が fs 製品でディスクからファイルを返すこと、サムネイルが実 PNG(HTTP 200 / image/png)で返ることを確認</li><li><strong>UI</strong> — ブラウザで表示確認。UI 無改造のまま 3,239 製品が実サムネイル付きで並ぶ</li><li><strong>Update ボタン</strong> — <code>POST /api/v1/update</code> を実際に叩き、etl → scan → embed が走り差分 0 件で正常終了することを確認。走査中の進捗表示も追加後に再確認済み</li><li><strong>DAZ Studio 連携</strong> — Script Server 2.9.0 稼働中に <code>browse-folder</code> を実行し成功。実在したメソッドは <code>browseToPath</code>(<code>browseToFolder</code>/<code>browseToDir</code> は存在せず、候補を並べたフォールバックが効いた)</li></ul>
+<p>目視未確認: <code>browse-folder</code> は API が成功を返したところまで確認済み。DAZ Studio の Content Library ペインが実際に該当フォルダへ移動したかは画面が見えないため未確認。気になる場合は fs 製品で「開く」を押して確認されたい。</p></div>
+</section>
+<section class="node node--section depth-0" id="repo">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">リポジトリと環境</h2>
+<a class="node__id" href="#repo">repo</a>
+</header>
+<section class="node node--section depth-1" id="repo-remote">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">git remote</h2>
+<a class="node__id" href="#repo-remote">repo-remote</a>
+</header>
+<div class="prose"><p>元は上流本家をそのまま <code>origin</code> にしていたため push できなかった。fork を作って張り替えてある。</p>
+<pre><code>origin    https://github.com/tbtomo/daz-content-browser.git        ← fork (public)
 upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家 (AGPL-3.0)</code></pre>
-
-      <p>
-        <code>main</code> と作業ブランチはどちらも <code>origin</code>（fork）を追跡する。<code>git push upstream</code> は権限が無いので失敗する。
-      </p>
-
-      <h3>コミット</h3>
-
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th>SHA</th><th>内容</th></tr></thead>
-          <tbody>
-            <tr><td class="mono">46602c2</td><td>Content Library の取り込み本体</td></tr>
-            <tr><td class="mono">78bbba3</td><td>CLAUDE.md に bd 不使用の注記</td></tr>
-            <tr><td class="mono">6377a05</td><td>走査中の進捗表示</td></tr>
-            <tr><td class="mono">eb7bff9</td><td>検索の候補プールを 500 &rarr; 5000 に</td></tr>
-            <tr><td class="mono">b921f51 ほか</td><td>この Handover.html（コード変更なし）</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3>環境で注意すべき点</h3>
-
-      <ul>
-        <li>
-          <strong><code>.venv</code> に pytest と httpx を追加インストールした。</strong><code>pyproject.toml</code> の依存には入っていない。テスト実行に必要だったため。不要なら <code>pip uninstall pytest httpx</code> で戻せる。
-        </li>
-        <li>
-          <strong><code>bd</code>（beads）は使わない。</strong>未インストールで、<code>.beads/</code> の課題は上流メンテナのもの。<code>CLAUDE.md</code> 冒頭の「Local overrides」節に明記済み（自動生成ブロックの外側なので再生成で消えない）。
-        </li>
-        <li>
-          <strong><code>.env</code> の <code>DAZ_STUDIO_EXE_PATH=CHANGEME</code> は未設定のまま。</strong>元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック（DAZ Studio を起動して製品を開く）は機能しない。
-        </li>
-        <li>
-          <strong><code>make dev-server</code> は自動リロードしない。</strong><code>uvicorn</code> を <code>--reload</code> 無しで起動しているので、<code>src/</code> を編集したら Ctrl+C &rarr; 起動し直すまで反映されない。編集したのに挙動が変わらない、で悩まないこと。
-        </li>
-      </ul>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="open">
-      <h2>未着手・判断待ち</h2>
-
-      <h3>次の一手（2026-08-25 時点）</h3>
-
-      <ol class="steps">
-        <li>
-          <strong>DAZ Studio を起動して CMS を上げ、<code>get_content_roots()</code> が今どのルートを返すか確認する。</strong>ルートは CMS の <code>tblBasePath</code> が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート（うち 1 本はジャンクション）を見ていた。
-        </li>
-        <li>
-          <strong>Poser ルートの取りこぼしを切り分ける。</strong><code>get_all_content_paths()</code> に <code>GRUNGEON Equipment Pack 6_Poser</code> / <code>davo_chamber7_Poser</code> の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、<code>collect_untracked_dirs()</code> の「<code>tracked &gt; 0</code> のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は<a href="#poser-gap">該当節</a>。
-        </li>
-        <li>
-          修正を入れたら <code>python vab.py load --phase scan</code> で再走査し、<code>/api/v1/info</code> の <code>products_by_source</code> で filesystem の件数が増えるかを確認する。
-        </li>
-      </ol>
-
-      <h3 id="japanese-search">今後やりたいこと：日本語の自由文で検索する</h3>
-
-      <p>
-        思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。
-      </p>
-
-      <p>
-        <strong>障害は埋め込みモデル。</strong><code>BAAI/bge-large-en-v1.5</code> は英語専用で、日本語クエリはトークナイズこそ通るが意味ベクトルとして成立しない。加えて <code>embedding_text</code> 側も英語（ストア製品は製品名・説明、filesystem 製品はパス由来の英単語）なので、日本語で引くには<strong>クロスリンガルに対応したモデルが要る</strong>。
-      </p>
-
-      <h4 style="font-family:system-ui,sans-serif; font-size:0.9rem; margin:1.4rem 0 0.5rem;">案 1 — 多言語モデルへ差し替え（本命）</h4>
-
-      <p>
-        差し替え口は<strong>既に用意されている</strong>。<code>src/main.py</code> の <code>--model</code> フラグ、環境変数 <code>EMBEDDING_MODEL_ID</code>、<code>server.py</code> の <code>embedding_model</code> / <code>query_model</code> 設定。<code>--model</code> のヘルプに <code>BAAI/bge-m3</code> が例として書かれており、上流も多言語モデルへの差し替えを想定している。
-      </p>
-
-      <ul>
-        <li>
-          <strong>次元の互換性を先に確認する。</strong><code>bge-m3</code> の dense ベクトルは現行と同じ 1024 次元とされるが、未実測。コード内に次元のハードコードは無い（<code>embedding_utils.py</code> の docstring に 1024 と書いてあるだけ）ので、次元が変わってもコード修正は要らないはずだが、ChromaDB のコレクションは作り直しになる。
-        </li>
-        <li>
-          <strong>再スクレイプは不要。</strong><code>embedding_text</code> は SQLite に残っているので、ChromaDB を捨てて <code>vab load --phase embed</code> で 3,239 件を再埋め込みすればよい。Web スクレイピングも Content Library 走査も走らない。
-        </li>
-        <li>
-          <strong>ONNX エクスポートはやり直しになる。</strong><code>export_model.py</code> / <code>vab_export.py</code> は <code>--model</code> を取るので手順自体はある。<code>bge-m3</code> は現行より大きく、<strong>CPU 推論のレイテンシが悪化する可能性がある</strong>。埋め込み時間と検索応答時間を切り替え前後で実測すること。
-        </li>
-        <li>
-          <strong>英語検索の品質も変わる。</strong>モデルが変われば類似度の分布ごと変わるので、<a href="#bugs">検索の 500 件上限を直したときに測った閾値の目安</a>（50%+ で 3,236 件、70%+ で 2 件）は当てにならなくなる。切り替え前に <code>office</code> / <code>dress</code> / <code>forest</code> の件数と応答時間を控えておき、前後で比較する。
-        </li>
-      </ul>
-
-      <h4 style="font-family:system-ui,sans-serif; font-size:0.9rem; margin:1.4rem 0 0.5rem;">案 2 — クエリだけ日英翻訳する</h4>
-
-      <p>
-        インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。<code>query_model</code> が <code>embedding_model</code> と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、<strong>翻訳のための外部依存（API 呼び出しなり小型モデルなり）が増える</strong>のと、訳語のブレがそのまま検索品質のブレになるのが難点。案 1 が通るならそちらが素直。
-      </p>
-
-      <div class="note">
-        <p class="eyebrow">UI について</p>
-        <p>
-          どちらの案でも <strong>UI の改造は不要</strong>。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。<code>ui/src</code> が未チェックアウトの submodule という制約に引っかからない。
-        </p>
-      </div>
-
-      <h3>判断待ち</h3>
-
-      <ul>
-        <li>
-          <strong>上流への PR を出すか。</strong>fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグ、グルーピングの O(n²) 問題、検索の 500 件上限。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する。
-        </li>
-        <li>
-          <strong>fork に残っている上流のブランチ 7 本。</strong><code>feature/jit-morph-loader</code> 等。上流に追随しないなら削除してよい。
-        </li>
-      </ul>
-
-      <h3>既知の限界</h3>
-
-      <ul>
-        <li>
-          <strong>グルーピングの過剰マージが 4 件。</strong>ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は <span class="mono">Thunder-3D</span> の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>（既定 5）で調整できる。
-        </li>
-        <li>
-          <strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong>片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える。
-        </li>
-        <li>
-          <strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong><code>ui/src</code> が未チェックアウトのため。差分実行（<code>force: false</code>）で動くことは API 経由で確認済み。
-        </li>
-        <li>
-          <strong>UI 自体は未改造。</strong><code>source</code> は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる。
-        </li>
-        <li>
-          <strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong>候補プールを 5000 に上げた結果、"office" のような一般語では 3,239 件・1.88MB が返る（0.60 秒）。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はプールを更に広げることではなく、サーバ側ページングの導入（<code>ui/src</code> の submodule が要る）。
-        </li>
-      </ul>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="resume">
-      <h2>再開手順</h2>
-
-      <ol class="steps">
-        <li>
-          <code>cd D:\OtherApps\daz-content-browser</code> して <code>git status</code>。<code>feature/content-library-indexing</code> にいるはず。
-        </li>
-        <li>
-          DAZ Studio と PostgreSQL CMS が動いていることを確認（CMS は DAZ Studio が管理している）。<strong>DAZ Studio が落ちていると <code>get_content_roots()</code> も <code>get_all_content_paths()</code> も引けず、ルート周りの調査は一切進まない</strong>（08-25 の調査はここで止まった）。
-        </li>
-        <li>
-          <code>make dev-server</code> でサーバ起動。<code>http://localhost:8000</code> に 3,239 製品が並べば前回の状態を再現できている。
-        </li>
-        <li>
-          コンテンツを追加した場合は UI の Update ボタン、または <code>python vab.py load</code>。どちらも同じ処理。
-        </li>
-        <li>
-          検索の健全性チェックは <code>office</code> で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる（<a href="#bugs">既存バグの 4 件目</a>）。
-        </li>
-        <li>
-          続きから着手するなら<a href="#open">未着手・判断待ち</a>の「次の一手」から。Poser ルートの取りこぼし調査が中断地点。
-        </li>
-      </ol>
-    </section>
-
-    <!-- ───────────────────────────────────────────── -->
-    <section id="commands">
-      <h2>コマンド早見表</h2>
-
-      <div class="stack">
-        <div>
-          <p class="eyebrow">インデックス</p>
-          <pre><code>python vab.py load                 # etl → scan → embed（差分）
+<p><code>main</code> と作業ブランチはどちらも <code>origin</code>(fork)を追跡する。<code>git push upstream</code> は権限が無いので失敗する。</p></div>
+</section>
+<section class="node node--section depth-1" id="repo-commits">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">コミット</h2>
+<a class="node__id" href="#repo-commits">repo-commits</a>
+</header>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th>SHA</th><th>内容</th></tr></thead><tbody><tr><td><code>46602c2</code></td><td>Content Library の取り込み本体</td></tr><tr><td><code>78bbba3</code></td><td>CLAUDE.md に bd 不使用の注記</td></tr><tr><td><code>6377a05</code></td><td>走査中の進捗表示</td></tr><tr><td><code>eb7bff9</code></td><td>検索の候補プールを 500 → 5000 に</td></tr><tr><td><code>b921f51</code> ほか</td><td>この引継ぎ文書(コード変更なし)</td></tr></tbody></table></div></div>
+</section>
+<section class="node node--section depth-1" id="repo-env">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">環境で注意すべき点</h2>
+<a class="node__id" href="#repo-env">repo-env</a>
+</header>
+<div class="prose"><ul><li><strong><code>.venv</code> に pytest と httpx を追加インストールした。</strong> <code>pyproject.toml</code> の依存には入っていない。テスト実行に必要だったため。不要なら <code>pip uninstall pytest httpx</code> で戻せる</li><li><strong><code>bd</code>(beads)は使わない。</strong> 未インストールで、<code>.beads/</code> の課題は上流メンテナのもの。<code>CLAUDE.md</code> 冒頭の「Local overrides」節に明記済み(自動生成ブロックの外側なので再生成で消えない)</li><li><strong><code>.env</code> の <code>DAZ_STUDIO_EXE_PATH=CHANGEME</code> は未設定のまま。</strong> 元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック(DAZ Studio を起動して製品を開く)は機能しない</li><li><strong><code>make dev-server</code> は自動リロードしない。</strong> <code>uvicorn</code> を <code>--reload</code> 無しで起動しているので、<code>src/</code> を編集したら Ctrl+C → 起動し直すまで反映されない。編集したのに挙動が変わらない、で悩まないこと</li></ul></div>
+</section>
+</section>
+<section class="node node--section depth-0" id="open">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">未着手・判断待ち</h2>
+<a class="node__id" href="#open">open</a>
+</header>
+<section class="node node--section depth-1" id="next-steps">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">次の一手(2026-08-25 時点)</h2>
+<a class="node__id" href="#next-steps">next-steps</a>
+</header>
+<div class="prose"><ol><li><strong>DAZ Studio を起動して CMS を上げ、<code>get_content_roots()</code> が今どのルートを返すか確認する。</strong> ルートは CMS の <code>tblBasePath</code> が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた</li><li><strong>Poser ルートの取りこぼしを切り分ける。</strong> <code>get_all_content_paths()</code> に <code>GRUNGEON Equipment Pack 6_Poser</code> / <code>davo_chamber7_Poser</code> の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、<code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は <a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></li><li>修正を入れたら <code>python vab.py load --phase scan</code> で再走査し、<code>/api/v1/info</code> の <code>products_by_source</code> で filesystem の件数が増えるかを確認する</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></div>
+</section>
+<section class="node node--idea depth-1" id="japanese-search">
+<header class="node__head">
+<span class="badge">idea</span>
+<h2 class="node__title">今後やりたいこと:日本語の自由文で検索する</h2>
+<a class="node__id" href="#japanese-search">japanese-search</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>blocker</th><td><code>&quot;埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用&quot;</code></td></tr><tr><th>status</th><td><code>idea</code></td></tr><tr><th>ui_change_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="prose"><p>思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。</p>
+<p><strong>障害は埋め込みモデル。</strong> <code>BAAI/bge-large-en-v1.5</code> は英語専用で、日本語クエリはトークナイズこそ通るが意味ベクトルとして成立しない。加えて <code>embedding_text</code> 側も英語(ストア製品は製品名・説明、filesystem 製品はパス由来の英単語)なので、日本語で引くには<strong>クロスリンガルに対応したモデルが要る</strong>。</p>
+<p>どちらの案でも <strong>UI の改造は不要</strong>。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。<code>ui/src</code> が未チェックアウトの submodule という制約に引っかからない。</p></div>
+<section class="node node--option depth-2" id="js-model-swap">
+<header class="node__head">
+<span class="badge">option</span>
+<h2 class="node__title">案 1 — 多言語モデルへ差し替え(本命)</h2>
+<a class="node__id" href="#js-model-swap">js-model-swap</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>candidate</th><td><code>BAAI/bge-m3</code></td></tr><tr><th>reindex_needed</th><td><code>embed_only</code></td></tr><tr><th>rescrape_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="prose"><p>差し替え口は<strong>既に用意されている</strong>。<code>src/main.py</code> の <code>--model</code> フラグ、環境変数 <code>EMBEDDING_MODEL_ID</code>、<code>server.py</code> の <code>embedding_model</code> / <code>query_model</code> 設定。<code>--model</code> のヘルプに <code>BAAI/bge-m3</code> が例として書かれており、上流も多言語モデルへの差し替えを想定している。</p>
+<ul><li><strong>次元の互換性を先に確認する。</strong> <code>bge-m3</code> の dense ベクトルは現行と同じ 1024 次元とされるが、未実測。コード内に次元のハードコードは無い(<code>embedding_utils.py</code> の docstring に 1024 と書いてあるだけ)ので、次元が変わってもコード修正は要らないはずだが、ChromaDB のコレクションは作り直しになる</li><li><strong>再スクレイプは不要。</strong> <code>embedding_text</code> は SQLite に残っているので、ChromaDB を捨てて <code>vab load --phase embed</code> で 3,239 件を再埋め込みすればよい。Web スクレイピングも Content Library 走査も走らない</li><li><strong>ONNX エクスポートはやり直しになる。</strong> <code>export_model.py</code> / <code>vab_export.py</code> は <code>--model</code> を取るので手順自体はある。<code>bge-m3</code> は現行より大きく、<strong>CPU 推論のレイテンシが悪化する可能性がある</strong>。埋め込み時間と検索応答時間を切り替え前後で実測すること</li><li><strong>英語検索の品質も変わる。</strong> モデルが変われば類似度の分布ごと変わるので、<a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a> で測った閾値の目安(50%+ で 3,236 件、70%+ で 2 件)は当てにならなくなる。切り替え前に <code>office</code> / <code>dress</code> / <code>forest</code> の件数と応答時間を控えておき、前後で比較する</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
+</section>
+<section class="node node--option depth-2" id="js-translate-query">
+<header class="node__head">
+<span class="badge">option</span>
+<h2 class="node__title">案 2 — クエリだけ日英翻訳する</h2>
+<a class="node__id" href="#js-translate-query">js-translate-query</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>new_dependency</th><td><code>true</code></td></tr><tr><th>reindex_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="prose"><p>インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。<code>query_model</code> が <code>embedding_model</code> と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、<strong>翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える</strong>のと、訳語のブレがそのまま検索品質のブレになるのが難点。<a class="ref" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a> が通るならそちらが素直。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a></div>
+</section>
+</section>
+<section class="node node--section depth-1" id="pending">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">判断待ち</h2>
+<a class="node__id" href="#pending">pending</a>
+</header>
+<div class="prose"><ul><li><strong>上流への PR を出すか。</strong> fork がある以上いつでも作れる。出すなら目玉はサムネイルのルート順バグ(<a class="ref" href="#bug-thumbnail-route">サムネイル API がルート順で潰されていた</a>)、グルーピングの O(n²) 問題(<a class="ref" href="#bug-grouping-o2">グルーピングが O(n²) で完走しなかった</a>)、検索の 500 件上限(<a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a>)。ただしレビュー対応と上流の設計方針との擦り合わせが継続的に発生する</li><li><strong>fork に残っている上流のブランチ 7 本。</strong> <code>feature/jit-morph-loader</code> 等。上流に追随しないなら削除してよい</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-thumbnail-route">サムネイル API がルート順で潰されていた</a><a class="chip" href="#bug-grouping-o2">グルーピングが O(n²) で完走しなかった</a><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
+</section>
+<section class="node node--section depth-1" id="limits">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">既知の限界</h2>
+<a class="node__id" href="#limits">limits</a>
+</header>
+<div class="prose"><ul><li><strong>グルーピングの過剰マージが 4 件。</strong> ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>(既定 5)で調整できる</li><li><strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong> 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える</li><li><strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong> <code>ui/src</code> が未チェックアウトのため。差分実行(<code>force: false</code>)で動くことは API 経由で確認済み</li><li><strong>UI 自体は未改造。</strong> <code>source</code> は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる</li><li><strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong> 候補プールを 5000 に上げた結果、"office" のような一般語では 3,239 件・1.88MB が返る(0.60 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はプールを更に広げることではなく、サーバ側ページングの導入(<code>ui/src</code> の submodule が要る)</li></ul></div>
+</section>
+</section>
+<section class="node node--section depth-0" id="resume">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">再開手順</h2>
+<a class="node__id" href="#resume">resume</a>
+</header>
+<div class="prose"><ol><li><code>cd D:\OtherApps\daz-content-browser</code> して <code>git status</code>。<code>feature/content-library-indexing</code> にいるはず</li><li>DAZ Studio と PostgreSQL CMS が動いていることを確認(CMS は DAZ Studio が管理している)。<strong>DAZ Studio が落ちていると <code>get_content_roots()</code> も <code>get_all_content_paths()</code> も引けず、ルート周りの調査は一切進まない</strong>(08-25 の調査はここで止まった)</li><li><code>make dev-server</code> でサーバ起動。<code>http://localhost:8000</code> に 3,239 製品が並べば前回の状態を再現できている</li><li>コンテンツを追加した場合は UI の Update ボタン、または <code>python vab.py load</code>。どちらも同じ処理</li><li>検索の健全性チェックは <code>office</code> で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(<a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a>)</li><li>続きから着手するなら <a class="ref" href="#next-steps">次の一手(2026-08-25 時点)</a> から。<a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a> の調査が中断地点</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a><a class="chip" href="#next-steps">次の一手(2026-08-25 時点)</a><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></div>
+</section>
+<section class="node node--section depth-0" id="commands">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">コマンド早見表</h2>
+<a class="node__id" href="#commands">commands</a>
+</header>
+<div class="prose"><p>インデックス:</p>
+<pre><code class="lang-bash">python vab.py load                 # etl → scan → embed(差分)
 python vab.py load --phase scan    # Content Library 走査のみ
 python vab.py load --phase etl     # CMS 製品のみ
 python vab.py load --force         # 全再構築</code></pre>
-        </div>
-
-        <div>
-          <p class="eyebrow">ヒューリスティックの調整</p>
-          <pre><code>python analyze_content_roots.py --show-dirs
-# .env の SCAN_MIN_PRODUCT_DEPTH（既定 5）で粒度を変える</code></pre>
-        </div>
-
-        <div>
-          <p class="eyebrow">テストとサーバ</p>
-          <pre><code>.venv\Scripts\python -m pytest tests\ -v
+<p>ヒューリスティックの調整:</p>
+<pre><code class="lang-bash">python analyze_content_roots.py --show-dirs
+# .env の SCAN_MIN_PRODUCT_DEPTH(既定 5)で粒度を変える</code></pre>
+<p>テストとサーバ:</p>
+<pre><code class="lang-bash">.venv\Scripts\python -m pytest tests\ -v
 make dev-server      # 本番モード
-make demo-server     # デモモード（DB 不要）</code></pre>
-        </div>
-
-        <div>
-          <p class="eyebrow">状態の確認</p>
-          <pre><code>curl -s http://localhost:8000/api/v1/info
-# products_by_source に 3 系統の内訳が出る</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      作業記録 &middot; 2026-08-16 &ndash; 08-18（08-25 に調査を追記）&middot; リポジトリ <span class="mono">D:\OtherApps\daz-content-browser</span>
-    </footer>
-
-  </main>
+make demo-server     # デモモード(DB 不要)</code></pre>
+<p>状態の確認:</p>
+<pre><code class="lang-bash">curl -s http://localhost:8000/api/v1/info
+# products_by_source に 3 系統の内訳が出る</code></pre></div>
+</section>
 </div>
+</body>
+</html>
