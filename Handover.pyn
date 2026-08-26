@@ -1,17 +1,18 @@
 meta meta "この文書について":
   branch: feature/content-library-indexing
+  canonical: "このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない"
   indexed_products: 3239
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "多言語モデル対応(embedding_utils のモデル非依存化)"
+  last_code_commit: "100cd7e(埋め込みモデルを差し替え可能に)"
   last_session: "2026-08-27(日本語検索: モデル差し替えのためのコード側対応。モデル本体のDLと再埋め込みは未実行)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
-  sessions: "2026-08-16 〜 08-18 / 追記 2026-08-25"
-  source_document: "Handover.html(この .pyn の元になった手書きの HTML)"
+  pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
+  resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
+  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27"
   status: implemented_verified_and_pushed
   test_note: "tests/ は DAZ Studio(CMS PostgreSQL)が起動していないと test_api.py が 7 failed / 9 errors になる。埋め込み側の 11 件を含むそれ以外は green"
-  tests_passing: 41
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -22,28 +23,58 @@ meta meta "この文書について":
 
 goal goal "DAZ Studio の Content Library を VAB に取り込む":
   """
-  Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。
+  Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。この本体部分は実装・検証・push まで完了している。
 
-  2026-08-25 に @roots を追記(調査のみ、コード変更なし)。
+  追記の経緯:
+
+  - 2026-08-25 — @roots(コンテンツルートの棚卸し。調査のみ、コード変更なし)
+  - 2026-08-27 — 引継ぎ文書を PYN 化(@doc-format)し、日本語の自由文検索に向けて埋め込みモデルを差し替え可能にした(@js-impl)。**切り替えそのものは未実行**(@js-switch)
+  """
+
+section readme-start "30秒で再開するには":
+  """
+  ```bash
+  cd D:\OtherApps\daz-content-browser
+  git status                                   # feature/content-library-indexing / clean のはず
+  .venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
+  make dev-server                              # http://localhost:8000 に 3,239 製品
+  ```
+
+  **いま何をするかは @next-steps の 1 番。** 日本語検索のためのコード側対応は済んでいて(@js-impl)、残っているのは **モデルのダウンロードと再埋め込みという実行作業だけ**(@js-switch)。回線と CPU 時間を使うので、意図的に未実行のまま残してある。
+
+  そのまま AI に投げるなら:
+
+  > `Handover.pyn` を読んで、@js-switch の手順を実行してください。実行前後で `check_search_quality.py` を走らせて比較すること。
+
+  中断地点はもう 1 つある。@poser-gap の調査は **DAZ Studio(CMS PostgreSQL)が起動していないと 1 ミリも進まない**。テストの `test_api.py` が落ちるのも同じ理由なので、まず DAZ Studio を起動するかどうかで、その日にできる作業が決まる。
+
+  | やりたいこと | DAZ Studio | 回線 |
+  |---|---|---|
+  | 日本語検索の切り替え(@js-switch) | 不要 | 約 2.2GB |
+  | Poser 取りこぼしの切り分け(@poser-gap) | **必須** | 不要 |
+  | テストを全部通す | **必須** | 不要 |
   """
 
 section state "現在の状態":
+  commits: 12
+  embedding_model: "BAAI/bge-large-en-v1.5(差し替え可能だが未切替)"
   indexed: 3239
   indexed_before: 1620
   newly_found: 1619
   newly_found_cms_local: 43
   newly_found_filesystem: 1576
   pushed: true
-  tests: "41 / 41 green"
+  tests: "36 passed(DAZ Studio 停止中は test_api.py が 7 failed / 9 errors)"
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
   | インデックス済み | 3,239 | 作業前 1,620 |
   | 新規に見えた製品 | 1,619 | cms-local 43 / filesystem 1,576 |
-  | テスト | 41 / 41 | 全て green |
-  | push | fork へ完了 | tbtomo/daz-content-browser |
+  | ブランチのコミット | 12 | すべて fork に push 済み |
+  | テスト | 36 passed | DAZ Studio 停止中は `test_api.py` が 7 failed / 9 errors(@resume の 2) |
+  | 埋め込みモデル | `BAAI/bge-large-en-v1.5` | 差し替え可能になったが**まだ英語専用のまま**(@js-switch 未実行) |
 
-  作業ツリーはクリーン、stash なし。ブランチ `feature/content-library-indexing` に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない(理由は @design)。
+  作業ツリーはクリーン、stash なし。UI は一切改造していない(理由は @design)。
   """
 
 section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
@@ -220,13 +251,17 @@ section repo "リポジトリと環境":
     """
   section repo-commits "コミット":
     """
+    `main` から見た `feature/content-library-indexing` の全 12 コミット。すべて fork(`origin`)に push 済み。
+
     | SHA | 内容 |
     |---|---|
     | `46602c2` | Content Library の取り込み本体 |
     | `78bbba3` | CLAUDE.md に bd 不使用の注記 |
     | `6377a05` | 走査中の進捗表示 |
-    | `eb7bff9` | 検索の候補プールを 500 → 5000 に |
-    | `b921f51` ほか | この引継ぎ文書(コード変更なし) |
+    | `eb7bff9` | 検索の候補プールを 500 → 5000 に(@bug-search-cap) |
+    | `b921f51` 〜 `779b242` | 引継ぎ文書の追記 5 件(コード変更なし) |
+    | `d9c8fa8` | 引継ぎ文書を PYN 化。HTML を生成物に(@doc-format) |
+    | `100cd7e` | 埋め込みモデルを差し替え可能に(@js-impl) |
     """
   section repo-env "環境で注意すべき点":
     """
@@ -235,13 +270,35 @@ section repo "リポジトリと環境":
     - **`.env` の `DAZ_STUDIO_EXE_PATH=CHANGEME` は未設定のまま。** 元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック(DAZ Studio を起動して製品を開く)は機能しない
     - **`make dev-server` は自動リロードしない。** `uvicorn` を `--reload` 無しで起動しているので、`src/` を編集したら Ctrl+C → 起動し直すまで反映されない。編集したのに挙動が変わらない、で悩まないこと
     """
+  convention doc-format "この引継ぎ文書の扱い(PYN)":
+    bundled: false
+    canonical: Handover.pyn
+    generated: Handover.html
+    tool_repo: "https://github.com/dataclock-jp/pyn"
+    """
+    `Handover.pyn` が正本で、`Handover.html` はその射影。**HTML を手で編集すると次の再生成で消える。**
+
+    ```bash
+    python -m pyn check Handover.pyn
+    python -m pyn html  Handover.pyn --title "DAZ Studio の Content Library を VAB に取り込む" -o Handover.html
+    ```
+
+    注意点:
+
+    - **pyn 本体はこのリポジトリに入っていない。** `dataclock-jp/pyn`(private)を別途 clone して、そのディレクトリから実行する。入っていない状態で `Handover.pyn` を編集しても文法エラーに気付けないので、触るなら先に clone すること
+    - 書き換えは文字列置換ではなく **ID 宛のパッチ**が安全(`python -m pyn patch Handover.pyn --ops ops.json`)。失敗時は原本が変更されない
+    - 散文中の `@id` はグラフの辺。存在しない ID を指すと `check` で落ちる
+    - 散文に Markdown 見出し(`#`)は書けない。節にしたいものは子ノードにする
+    - 属性値に入れ子は書けない。構造が要るなら子ノード
+    """
 
 section open "未着手・判断待ち":
-  section next-steps "次の一手(2026-08-25 時点)":
+  section next-steps "次の一手(2026-08-27 時点)":
     """
-    1. **DAZ Studio を起動して CMS を上げ、`get_content_roots()` が今どのルートを返すか確認する。** ルートは CMS の `tblBasePath` が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた
-    2. **Poser ルートの取りこぼしを切り分ける。** `get_all_content_paths()` に `GRUNGEON Equipment Pack 6_Poser` / `davo_chamber7_Poser` の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は @poser-gap
-    3. 修正を入れたら `python vab.py load --phase scan` で再走査し、`/api/v1/info` の `products_by_source` で filesystem の件数が増えるかを確認する
+    1. **日本語検索を実際に有効化する。** コード側は済んでいる(@js-impl)。残るはモデル DL・ChromaDB 作り直し・3,239 件の再埋め込みで、手順は @js-switch。DAZ Studio は不要、回線と CPU 時間だけ要る。切り替え前に `python check_search_quality.py --json > before.json` を取っておくこと
+    2. **DAZ Studio を起動して CMS を上げ、`get_content_roots()` が今どのルートを返すか確認する。** ルートは CMS の `tblBasePath` が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた
+    3. **Poser ルートの取りこぼしを切り分ける。** `get_all_content_paths()` に `GRUNGEON Equipment Pack 6_Poser` / `davo_chamber7_Poser` の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は @poser-gap
+    4. 修正を入れたら `python vab.py load --phase scan` で再走査し、`/api/v1/info` の `products_by_source` で filesystem の件数が増えるかを確認する
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
@@ -341,12 +398,13 @@ section open "未着手・判断待ち":
 
 section resume "再開手順":
   """
-  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいるはず
-  2. DAZ Studio と PostgreSQL CMS が動いていることを確認(CMS は DAZ Studio が管理している)。**DAZ Studio が落ちていると `get_content_roots()` も `get_all_content_paths()` も引けず、ルート周りの調査は一切進まない**(08-25 の調査はここで止まった)
+  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(08-27 時点で origin と同期済み)
+  2. **その日にできる作業は DAZ Studio を起動するかで決まる。** DAZ Studio が落ちていると `get_content_roots()` も `get_all_content_paths()` も引けず、ルート周りの調査(@poser-gap)は一切進まない。`tests/test_api.py` が 7 failed / 9 errors になるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237` へ接続できない)で、コードの不具合ではない
   3. `make dev-server` でサーバ起動。`http://localhost:8000` に 3,239 製品が並べば前回の状態を再現できている
   4. コンテンツを追加した場合は UI の Update ボタン、または `python vab.py load`。どちらも同じ処理
-  5. 検索の健全性チェックは `office` で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(@bug-search-cap)
-  6. 続きから着手するなら @next-steps から。@poser-gap の調査が中断地点
+  5. 検索の健全性チェックは `python check_search_quality.py`。英語 `office` で Min match: any が 3,239 件、70%+ が 2 件になれば **差し替え前の**状態として正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(@bug-search-cap)
+  6. **この引継ぎ文書を書き換えるときは `Handover.pyn` を直す。** `Handover.html` は生成物なので手で編集しない(@doc-format)
+  7. 続きから着手するなら @next-steps の 1 番から
   """
 
 section commands "コマンド早見表":

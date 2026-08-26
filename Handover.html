@@ -104,7 +104,7 @@ a{color:var(--accent)}
 <h2 class="node__title">この文書について</h2>
 <a class="node__id" href="#meta">meta</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>indexed_products</th><td><code>3239</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;多言語モデル対応(embedding_utils のモデル非依存化)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(日本語検索: モデル差し替えのためのコード側対応。モデル本体のDLと再埋め込みは未実行)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 2026-08-25&quot;</code></td></tr><tr><th>source_document</th><td><code>&quot;Handover.html(この .pyn の元になった手書きの HTML)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;tests/ は DAZ Studio(CMS PostgreSQL)が起動していないと test_api.py が 7 failed / 9 errors になる。埋め込み側の 11 件を含むそれ以外は green&quot;</code></td></tr><tr><th>tests_passing</th><td><code>41</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>canonical</th><td><code>&quot;このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない&quot;</code></td></tr><tr><th>indexed_products</th><td><code>3239</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;100cd7e(埋め込みモデルを差し替え可能に)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(日本語検索: モデル差し替えのためのコード側対応。モデル本体のDLと再埋め込みは未実行)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>pyn_repo</th><td><code>&quot;https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)&quot;</code></td></tr><tr><th>resume_entry_point</th><td><code>&quot;@readme-start を読む → @next-steps の 1 番から&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 08-25 / 08-27&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;tests/ は DAZ Studio(CMS PostgreSQL)が起動していないと test_api.py が 7 failed / 9 errors になる。埋め込み側の 11 件を含むそれ以外は green&quot;</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><p>この文書は <code>Handover.html</code> を PYN(<code>.pyn</code>)へ書き換えたものです。節見出しはすべてノードになっており、HTML の <code>id</code> 属性がそのままノード ID になっています(<code>#state</code> → <code>state</code> など)。</p>
 <p>書き換えは <code>python -m pyn patch Handover.pyn --ops ops.json</code> が安全です(ID 宛なので行番号がずれても当たり、失敗時は文書が変更されません)。<code>#</code> コメントは作業メモ扱いで、射影を再生成すると消えます。</p></div>
 </section>
@@ -114,9 +114,27 @@ a{color:var(--accent)}
 <h2 class="node__title">DAZ Studio の Content Library を VAB に取り込む</h2>
 <a class="node__id" href="#goal">goal</a>
 </header>
-<div class="prose"><p>Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。実装・検証・push まで完了している。</p>
-<p>2026-08-25 に <a class="ref" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a> を追記(調査のみ、コード変更なし)。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a></div>
+<div class="prose"><p>Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。この本体部分は実装・検証・push まで完了している。</p>
+<p>追記の経緯:</p>
+<ul><li>2026-08-25 — <a class="ref" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a>(コンテンツルートの棚卸し。調査のみ、コード変更なし)</li><li>2026-08-27 — 引継ぎ文書を PYN 化(<a class="ref" href="#doc-format">この引継ぎ文書の扱い(PYN)</a>)し、日本語の自由文検索に向けて埋め込みモデルを差し替え可能にした(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)。<strong>切り替えそのものは未実行</strong>(<a class="ref" href="#js-switch">切り替え手順(未実行)</a>)</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a><a class="chip" href="#doc-format">この引継ぎ文書の扱い(PYN)</a><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a></div>
+</section>
+<section class="node node--section depth-0" id="readme-start">
+<header class="node__head">
+<span class="badge">section</span>
+<h2 class="node__title">30秒で再開するには</h2>
+<a class="node__id" href="#readme-start">readme-start</a>
+</header>
+<div class="prose"><pre><code class="lang-bash">cd D:\OtherApps\daz-content-browser
+git status                                   # feature/content-library-indexing / clean のはず
+.venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
+make dev-server                              # http://localhost:8000 に 3,239 製品</code></pre>
+<p><strong>いま何をするかは <a class="ref" href="#next-steps">次の一手(2026-08-27 時点)</a> の 1 番。</strong> 日本語検索のためのコード側対応は済んでいて(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)、残っているのは <strong>モデルのダウンロードと再埋め込みという実行作業だけ</strong>(<a class="ref" href="#js-switch">切り替え手順(未実行)</a>)。回線と CPU 時間を使うので、意図的に未実行のまま残してある。</p>
+<p>そのまま AI に投げるなら:</p>
+<blockquote><p><code>Handover.pyn</code> を読んで、<a class="ref" href="#js-switch">切り替え手順(未実行)</a> の手順を実行してください。実行前後で <code>check_search_quality.py</code> を走らせて比較すること。</p></blockquote>
+<p>中断地点はもう 1 つある。<a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a> の調査は <strong>DAZ Studio(CMS PostgreSQL)が起動していないと 1 ミリも進まない</strong>。テストの <code>test_api.py</code> が落ちるのも同じ理由なので、まず DAZ Studio を起動するかどうかで、その日にできる作業が決まる。</p>
+<div class="table-wrap"><table><thead><tr><th>やりたいこと</th><th>DAZ Studio</th><th>回線</th></tr></thead><tbody><tr><td>日本語検索の切り替え(<a class="ref" href="#js-switch">切り替え手順(未実行)</a>)</td><td>不要</td><td>約 2.2GB</td></tr><tr><td>Poser 取りこぼしの切り分け(<a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a>)</td><td><strong>必須</strong></td><td>不要</td></tr><tr><td>テストを全部通す</td><td><strong>必須</strong></td><td>不要</td></tr></tbody></table></div></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#next-steps">次の一手(2026-08-27 時点)</a><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></div>
 </section>
 <section class="node node--section depth-0" id="state">
 <header class="node__head">
@@ -124,10 +142,10 @@ a{color:var(--accent)}
 <h2 class="node__title">現在の状態</h2>
 <a class="node__id" href="#state">state</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>indexed</th><td><code>3239</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1619</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1576</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;41 / 41 green&quot;</code></td></tr></tbody></table></div>
-<div class="prose"><div class="table-wrap"><table><thead><tr><th>指標</th><th>値</th><th>補足</th></tr></thead><tbody><tr><td>インデックス済み</td><td>3,239</td><td>作業前 1,620</td></tr><tr><td>新規に見えた製品</td><td>1,619</td><td>cms-local 43 / filesystem 1,576</td></tr><tr><td>テスト</td><td>41 / 41</td><td>全て green</td></tr><tr><td>push</td><td>fork へ完了</td><td>tbtomo/daz-content-browser</td></tr></tbody></table></div>
-<p>作業ツリーはクリーン、stash なし。ブランチ <code>feature/content-library-indexing</code> に 4 コミットが載っており、すべて fork に push 済み。UI は一切改造していない(理由は <a class="ref" href="#design">何を作ったか</a>)。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#design">何を作ったか</a></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>12</code></td></tr><tr><th>embedding_model</th><td><code>&quot;BAAI/bge-large-en-v1.5(差し替え可能だが未切替)&quot;</code></td></tr><tr><th>indexed</th><td><code>3239</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1619</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1576</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;36 passed(DAZ Studio 停止中は test_api.py が 7 failed / 9 errors)&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th>指標</th><th>値</th><th>補足</th></tr></thead><tbody><tr><td>インデックス済み</td><td>3,239</td><td>作業前 1,620</td></tr><tr><td>新規に見えた製品</td><td>1,619</td><td>cms-local 43 / filesystem 1,576</td></tr><tr><td>ブランチのコミット</td><td>12</td><td>すべて fork に push 済み</td></tr><tr><td>テスト</td><td>36 passed</td><td>DAZ Studio 停止中は <code>test_api.py</code> が 7 failed / 9 errors(<a class="ref" href="#resume">再開手順</a> の 2)</td></tr><tr><td>埋め込みモデル</td><td><code>BAAI/bge-large-en-v1.5</code></td><td>差し替え可能になったが<strong>まだ英語専用のまま</strong>(<a class="ref" href="#js-switch">切り替え手順(未実行)</a> 未実行)</td></tr></tbody></table></div>
+<p>作業ツリーはクリーン、stash なし。UI は一切改造していない(理由は <a class="ref" href="#design">何を作ったか</a>)。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#resume">再開手順</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#design">何を作ったか</a></div>
 </section>
 <section class="node node--section depth-0" id="roots">
 <header class="node__head">
@@ -299,7 +317,9 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
 <h2 class="node__title">コミット</h2>
 <a class="node__id" href="#repo-commits">repo-commits</a>
 </header>
-<div class="prose"><div class="table-wrap"><table><thead><tr><th>SHA</th><th>内容</th></tr></thead><tbody><tr><td><code>46602c2</code></td><td>Content Library の取り込み本体</td></tr><tr><td><code>78bbba3</code></td><td>CLAUDE.md に bd 不使用の注記</td></tr><tr><td><code>6377a05</code></td><td>走査中の進捗表示</td></tr><tr><td><code>eb7bff9</code></td><td>検索の候補プールを 500 → 5000 に</td></tr><tr><td><code>b921f51</code> ほか</td><td>この引継ぎ文書(コード変更なし)</td></tr></tbody></table></div></div>
+<div class="prose"><p><code>main</code> から見た <code>feature/content-library-indexing</code> の全 12 コミット。すべて fork(<code>origin</code>)に push 済み。</p>
+<div class="table-wrap"><table><thead><tr><th>SHA</th><th>内容</th></tr></thead><tbody><tr><td><code>46602c2</code></td><td>Content Library の取り込み本体</td></tr><tr><td><code>78bbba3</code></td><td>CLAUDE.md に bd 不使用の注記</td></tr><tr><td><code>6377a05</code></td><td>走査中の進捗表示</td></tr><tr><td><code>eb7bff9</code></td><td>検索の候補プールを 500 → 5000 に(<a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a>)</td></tr><tr><td><code>b921f51</code> 〜 <code>779b242</code></td><td>引継ぎ文書の追記 5 件(コード変更なし)</td></tr><tr><td><code>d9c8fa8</code></td><td>引継ぎ文書を PYN 化。HTML を生成物に(<a class="ref" href="#doc-format">この引継ぎ文書の扱い(PYN)</a>)</td></tr><tr><td><code>100cd7e</code></td><td>埋め込みモデルを差し替え可能に(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)</td></tr></tbody></table></div></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a><a class="chip" href="#doc-format">この引継ぎ文書の扱い(PYN)</a><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a></div>
 </section>
 <section class="node node--section depth-1" id="repo-env">
 <header class="node__head">
@@ -308,6 +328,19 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
 <a class="node__id" href="#repo-env">repo-env</a>
 </header>
 <div class="prose"><ul><li><strong><code>.venv</code> に pytest と httpx を追加インストールした。</strong> <code>pyproject.toml</code> の依存には入っていない。テスト実行に必要だったため。不要なら <code>pip uninstall pytest httpx</code> で戻せる</li><li><strong><code>bd</code>(beads)は使わない。</strong> 未インストールで、<code>.beads/</code> の課題は上流メンテナのもの。<code>CLAUDE.md</code> 冒頭の「Local overrides」節に明記済み(自動生成ブロックの外側なので再生成で消えない)</li><li><strong><code>.env</code> の <code>DAZ_STUDIO_EXE_PATH=CHANGEME</code> は未設定のまま。</strong> 元からの状態。Script Server 経由の導線は動くので影響は限定的だが、プラグインを止めたときのフォールバック(DAZ Studio を起動して製品を開く)は機能しない</li><li><strong><code>make dev-server</code> は自動リロードしない。</strong> <code>uvicorn</code> を <code>--reload</code> 無しで起動しているので、<code>src/</code> を編集したら Ctrl+C → 起動し直すまで反映されない。編集したのに挙動が変わらない、で悩まないこと</li></ul></div>
+</section>
+<section class="node node--convention depth-1" id="doc-format">
+<header class="node__head">
+<span class="badge">convention</span>
+<h2 class="node__title">この引継ぎ文書の扱い(PYN)</h2>
+<a class="node__id" href="#doc-format">doc-format</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>bundled</th><td><code>false</code></td></tr><tr><th>canonical</th><td><code>Handover.pyn</code></td></tr><tr><th>generated</th><td><code>Handover.html</code></td></tr><tr><th>tool_repo</th><td><code>&quot;https://github.com/dataclock-jp/pyn&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><p><code>Handover.pyn</code> が正本で、<code>Handover.html</code> はその射影。<strong>HTML を手で編集すると次の再生成で消える。</strong></p>
+<pre><code class="lang-bash">python -m pyn check Handover.pyn
+python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library を VAB に取り込む&quot; -o Handover.html</code></pre>
+<p>注意点:</p>
+<ul><li><strong>pyn 本体はこのリポジトリに入っていない。</strong> <code>dataclock-jp/pyn</code>(private)を別途 clone して、そのディレクトリから実行する。入っていない状態で <code>Handover.pyn</code> を編集しても文法エラーに気付けないので、触るなら先に clone すること</li><li>書き換えは文字列置換ではなく <strong>ID 宛のパッチ</strong>が安全(<code>python -m pyn patch Handover.pyn --ops ops.json</code>)。失敗時は原本が変更されない</li><li>散文中の <code>@id</code> はグラフの辺。存在しない ID を指すと <code>check</code> で落ちる</li><li>散文に Markdown 見出し(<code>#</code>)は書けない。節にしたいものは子ノードにする</li><li>属性値に入れ子は書けない。構造が要るなら子ノード</li></ul></div>
 </section>
 </section>
 <section class="node node--section depth-0" id="open">
@@ -319,11 +352,11 @@ upstream  https://github.com/bluemoonfoundry/daz-content-browser.git  ← 本家
 <section class="node node--section depth-1" id="next-steps">
 <header class="node__head">
 <span class="badge">section</span>
-<h2 class="node__title">次の一手(2026-08-25 時点)</h2>
+<h2 class="node__title">次の一手(2026-08-27 時点)</h2>
 <a class="node__id" href="#next-steps">next-steps</a>
 </header>
-<div class="prose"><ol><li><strong>DAZ Studio を起動して CMS を上げ、<code>get_content_roots()</code> が今どのルートを返すか確認する。</strong> ルートは CMS の <code>tblBasePath</code> が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた</li><li><strong>Poser ルートの取りこぼしを切り分ける。</strong> <code>get_all_content_paths()</code> に <code>GRUNGEON Equipment Pack 6_Poser</code> / <code>davo_chamber7_Poser</code> の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、<code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は <a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></li><li>修正を入れたら <code>python vab.py load --phase scan</code> で再走査し、<code>/api/v1/info</code> の <code>products_by_source</code> で filesystem の件数が増えるかを確認する</li></ol></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></div>
+<div class="prose"><ol><li><strong>日本語検索を実際に有効化する。</strong> コード側は済んでいる(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)。残るはモデル DL・ChromaDB 作り直し・3,239 件の再埋め込みで、手順は <a class="ref" href="#js-switch">切り替え手順(未実行)</a>。DAZ Studio は不要、回線と CPU 時間だけ要る。切り替え前に <code>python check_search_quality.py --json &gt; before.json</code> を取っておくこと</li><li><strong>DAZ Studio を起動して CMS を上げ、<code>get_content_roots()</code> が今どのルートを返すか確認する。</strong> ルートは CMS の <code>tblBasePath</code> が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた</li><li><strong>Poser ルートの取りこぼしを切り分ける。</strong> <code>get_all_content_paths()</code> に <code>GRUNGEON Equipment Pack 6_Poser</code> / <code>davo_chamber7_Poser</code> の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、<code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は <a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></li><li>修正を入れたら <code>python vab.py load --phase scan</code> で再走査し、<code>/api/v1/info</code> の <code>products_by_source</code> で filesystem の件数が増えるかを確認する</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></div>
 </section>
 <section class="node node--idea depth-1" id="japanese-search">
 <header class="node__head">
@@ -416,8 +449,8 @@ python check_search_quality.py --json &gt; after.json     # 日本語クエリ�
 <h2 class="node__title">再開手順</h2>
 <a class="node__id" href="#resume">resume</a>
 </header>
-<div class="prose"><ol><li><code>cd D:\OtherApps\daz-content-browser</code> して <code>git status</code>。<code>feature/content-library-indexing</code> にいるはず</li><li>DAZ Studio と PostgreSQL CMS が動いていることを確認(CMS は DAZ Studio が管理している)。<strong>DAZ Studio が落ちていると <code>get_content_roots()</code> も <code>get_all_content_paths()</code> も引けず、ルート周りの調査は一切進まない</strong>(08-25 の調査はここで止まった)</li><li><code>make dev-server</code> でサーバ起動。<code>http://localhost:8000</code> に 3,239 製品が並べば前回の状態を再現できている</li><li>コンテンツを追加した場合は UI の Update ボタン、または <code>python vab.py load</code>。どちらも同じ処理</li><li>検索の健全性チェックは <code>office</code> で。Min match: any が 3,239 件、70%+ が 2 件になれば正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(<a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a>)</li><li>続きから着手するなら <a class="ref" href="#next-steps">次の一手(2026-08-25 時点)</a> から。<a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a> の調査が中断地点</li></ol></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a><a class="chip" href="#next-steps">次の一手(2026-08-25 時点)</a><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a></div>
+<div class="prose"><ol><li><code>cd D:\OtherApps\daz-content-browser</code> して <code>git status</code>。<code>feature/content-library-indexing</code> にいて、クリーンなはず(08-27 時点で origin と同期済み)</li><li><strong>その日にできる作業は DAZ Studio を起動するかで決まる。</strong> DAZ Studio が落ちていると <code>get_content_roots()</code> も <code>get_all_content_paths()</code> も引けず、ルート周りの調査(<a class="ref" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a>)は一切進まない。<code>tests/test_api.py</code> が 7 failed / 9 errors になるのも同じ理由(CMS PostgreSQL <code>127.0.0.1:17237</code> へ接続できない)で、コードの不具合ではない</li><li><code>make dev-server</code> でサーバ起動。<code>http://localhost:8000</code> に 3,239 製品が並べば前回の状態を再現できている</li><li>コンテンツを追加した場合は UI の Update ボタン、または <code>python vab.py load</code>。どちらも同じ処理</li><li>検索の健全性チェックは <code>python check_search_quality.py</code>。英語 <code>office</code> で Min match: any が 3,239 件、70%+ が 2 件になれば <strong>差し替え前の</strong>状態として正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(<a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a>)</li><li><strong>この引継ぎ文書を書き換えるときは <code>Handover.pyn</code> を直す。</strong> <code>Handover.html</code> は生成物なので手で編集しない(<a class="ref" href="#doc-format">この引継ぎ文書の扱い(PYN)</a>)</li><li>続きから着手するなら <a class="ref" href="#next-steps">次の一手(2026-08-27 時点)</a> の 1 番から</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#poser-gap">未解決:Poser ライブラリが 1 製品しか拾えていない</a><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a><a class="chip" href="#doc-format">この引継ぎ文書の扱い(PYN)</a><a class="chip" href="#next-steps">次の一手(2026-08-27 時点)</a></div>
 </section>
 <section class="node node--section depth-0" id="commands">
 <header class="node__head">
