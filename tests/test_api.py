@@ -76,6 +76,45 @@ def test_settings(client):
     assert "embedding_model" in body
 
 
+def test_settings_reports_the_translation_stack(client):
+    """A search can now go wrong in the translator, so the page has to name it."""
+    body = client.get("/api/v1/settings").json()
+    assert "translation_enabled" in body
+    if body["translation_enabled"]:
+        assert body.get("translation_backend") in ("onnx", "ctranslate2")
+        assert body.get("translation_model")
+        assert isinstance(body.get("translation_glossary_terms"), int)
+
+
+def test_the_model_fields_cannot_be_changed(client):
+    """Which model answers queries is fixed at load time by EMBEDDING_MODEL_ID.
+
+    The settings form renders these as editable inputs, so without this the page
+    would happily store and then display a model that is not the one searching.
+    """
+    before = client.get("/api/v1/settings").json()
+
+    r = client.put("/api/v1/settings", json={
+        "embedding_model": "totally/wrong-model",
+        "query_model": "also/wrong",
+    })
+    assert r.status_code == 200
+    assert r.json()["embedding_model"] == before["embedding_model"]
+    assert r.json()["query_model"] == before["query_model"]
+
+    after = client.get("/api/v1/settings").json()
+    assert after["embedding_model"] == before["embedding_model"]
+    assert after["query_model"] == before["query_model"]
+
+
+def test_other_settings_still_save(client):
+    """The read-only guard must not block the fields that are genuinely settable."""
+    r = client.put("/api/v1/settings", json={"cms_host": "192.0.2.10"})
+    assert r.status_code == 200
+    assert r.json()["cms_host"] == "192.0.2.10"
+    client.put("/api/v1/settings", json={"cms_host": "127.0.0.1"})
+
+
 def test_daz_studio_status(client):
     r = client.get("/api/v1/daz-studio/status")
     assert r.status_code == 200

@@ -71,6 +71,41 @@ _SETTINGS_DEFAULTS: dict = {
 }
 
 
+# Reported by /settings but never taken from settings.json. Which model answers a
+# query is decided by EMBEDDING_MODEL_ID at load time and cannot change without
+# re-embedding the whole index, so a stored override could only ever be a lie.
+_READ_ONLY_SETTINGS = ("embedding_model", "query_model")
+
+
+def _translation_status() -> dict:
+    """What the query translator is actually doing, for display.
+
+    The settings page listed the embedding model and stopped there, which was the
+    whole story until Japanese queries started being translated before they were
+    embedded. Now a search can go wrong in a second place, and this is where you
+    look first.
+    """
+    try:
+        import query_translation
+    except ImportError:
+        return {"translation_enabled": False}
+    try:
+        enabled = query_translation.is_enabled()
+        status = {
+            "translation_enabled": enabled,
+            "translation_backend": query_translation._config()["backend"],
+            "translation_model": query_translation._config()["model_id"],
+            "translation_glossary_terms": len(query_translation.load_glossary()),
+        }
+        # active_backend() loads the model, so only ask once something already has.
+        if query_translation._state:
+            status["translation_backend_active"] = query_translation.active_backend()
+        return status
+    except Exception as e:
+        logger.warning(f"Could not read translation status: {e}")
+        return {"translation_enabled": False}
+
+
 def _load_settings() -> dict:
     base = dict(_SETTINGS_DEFAULTS)
     if _SETTINGS_PATH.exists():
@@ -79,6 +114,11 @@ def _load_settings() -> dict:
             base.update(overrides)
         except Exception as e:
             logger.warning(f"Could not load settings.json: {e}")
+    # Restore the read-only entries over anything an older settings.json stored, so
+    # the page always names the model that is really answering queries.
+    for key in _READ_ONLY_SETTINGS:
+        base[key] = _SETTINGS_DEFAULTS[key]
+    base.update(_translation_status())
     return base
 
 
@@ -575,8 +615,13 @@ def save_settings(payload: SettingsPayload):
             existing = json.loads(_SETTINGS_PATH.read_text(encoding="utf-8"))
         except Exception:
             pass
-    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    updates = {k: v for k, v in payload.model_dump().items()
+               if v is not None and k not in _READ_ONLY_SETTINGS}
     existing.update(updates)
+    # An older settings.json may already carry one; drop it rather than leave a
+    # value that is displayed but never used.
+    for key in _READ_ONLY_SETTINGS:
+        existing.pop(key, None)
     _save_settings(existing)
     return _load_settings()
 
