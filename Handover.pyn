@@ -6,7 +6,7 @@ meta meta "この文書について":
   indexed_products_before: 1620
   language: ja
   last_code_commit: "b037a17(日本語クエリを英訳してから埋め込む)"
-  last_session: "2026-08-27(bge-m3 へ切替 → e5 を比較して却下 → クエリ翻訳を実装)"
+  last_session: "2026-08-27(bge-m3 へ切替 → e5 却下 → クエリ翻訳を実装 → Poser ルートの作法を確認)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
@@ -143,6 +143,11 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
 
     **③ Script Server の `get-content-dirs` が常に空を返していた** — ①の修正に必要な情報源そのものが壊れていた。@roots-source を参照。
     """
+    """
+    **2026-08-27 追記(利用者の実機確認)。** 上の①で「CMS が製品フォルダを、その親ではなくルート登録している」ことを異常のように書いたが、**それが DAZ Studio の正しい作法だった**。Poser のコンテンツディレクトリは直下に `Runtime\` を持つ前提なので、有効なルートは製品フォルダの方。親を登録しても DAZ Studio 側には何も現れない。詳細と手順は @poser-roots。
+
+    したがって「親を追加すれば済む」という当初の対処案は、**VAB からは見えるようになるが DAZ Studio からは見えない**という中途半端なもので、正しい対処は製品フォルダを 1 つずつ登録すること。現在は 4 製品フォルダすべてが登録され、DAZ Studio でも VAB でも見える。
+    """
   task poser-fix "Runtime/Libraries の位置決め打ちを修正(2026-08-27)":
     commit: 6cb6cd7
     files_recovered: 146
@@ -195,6 +200,37 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     - `get_content_directories()` はレスポンス最上位の `paths` を読んでいたが、プラグインはスクリプトの戻り値を `result` で包む
 
     どちらも例外にならず `[]` が返るだけなので、誰も気付いていなかった。両方を直し、3 リスト(native / poser / other)を対象にしたうえで、`resolve_content_roots()` で **CMS のベースパスと和集合**を取る。古い CMS 行は無駄な走査 1 回で済むが、ルートの欠落はコンテンツを永久に不可視にするため。DAZ Studio 停止中は従来どおり CMS 側だけにフォールバックする。
+    """
+  convention poser-roots "Poser Formats は製品フォルダ単位で登録する":
+    daz_studio_sensitive: true
+    found_by: "利用者の実機確認(2026-08-27)"
+    vab_sensitive: false
+    """
+    **DAZ Studio の Poser Formats は、製品フォルダ単位で登録する。** 親ディレクトリを 1 本足しても DAZ Studio 側には何も現れない。
+
+    ```
+    D:\Poser\My Poser Library                      ← 登録しても DAZ Studio には見えない
+    D:\Poser\My Poser Library\davo_chamber7_Poser  ← これを登録すると見える
+    ```
+
+    **理由は Poser のコンテンツディレクトリが直下に `Runtime\` を持つ前提だから。** `davo_chamber7_Poser\Runtime\Libraries\…` という構造なので、有効なルートは製品フォルダの方であって、その親ではない。CMS が最初から `Darkseal_WomanInside` と `Darkseal_WomanInside2` という*製品フォルダ*を base path に持っていたのも同じ理由で、あれは異常な登録ではなく正しい登録だった(@poser-gap で「子をルート登録している」と書いたのは、DAZ Studio 側の作法としては正常という理解が抜けていた)。
+
+    **VAB 側は 3 通りのどれでも同じ結果になる。** @poser-fix で `Runtime/Libraries` を相対パス中から探すようにしたため、ルートが製品フォルダでも、その親でも、両方でも変わらない。実測:
+
+    | 登録の仕方 | 全製品 | Poser 側に触れる製品 | Poser 側ディレクトリ |
+    |---|---|---|---|
+    | 親のみ | 1,570 | 6 | 17 |
+    | 子(製品フォルダ)のみ | 1,570 | 6 | 17 |
+    | 親＋子(現在の設定) | 1,570 | 6 | 17 |
+
+    `dedupe_roots()` が入れ子を落とすので、親を登録してあれば子は無視される。**親エントリは DAZ Studio にとって無意味・VAB にとって無害**なので、消しても残してもよい。
+
+    拾える 6 製品は Basic Scifi Cuffs / Chamber 7 / Grungeon / V4 / V4M4 / Woman Inside。新規製品としては増えず、DS 版と同一製品の追加 `content_dirs` として畳まれる(@poser-gap)。
+
+    **新しい Poser 製品を入れたときの手順:**
+
+    1. DAZ Studio の Content Directory Manager → Poser Formats に**その製品フォルダ**を追加
+    2. `python vab.py load --phase scan --all`(既存製品の `content_dirs` を更新するため `--all` が要る)
     """
 
 section problem "何が問題だったか":
