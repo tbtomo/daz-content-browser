@@ -236,7 +236,7 @@ python export_translation_model.py             # 翻訳 361MB(任意。無けれ
 <h2 class="node__title">Poser Formats は製品フォルダ単位で登録する</h2>
 <a class="node__id" href="#poser-roots">poser-roots</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>daz_studio_sensitive</th><td><code>true</code></td></tr><tr><th>found_by</th><td><code>&quot;利用者の実機確認(2026-08-27)&quot;</code></td></tr><tr><th>vab_sensitive</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>daz_format_is_freeform</th><td><code>true</code></td></tr><tr><th>daz_studio_sensitive</th><td><code>true</code></td></tr><tr><th>found_by</th><td><code>&quot;利用者の実機確認(2026-08-27)&quot;</code></td></tr><tr><th>vab_sensitive</th><td><code>false</code></td></tr></tbody></table></div>
 <div class="prose"><p><strong>DAZ Studio の Poser Formats は、製品フォルダ単位で登録する。</strong> 親ディレクトリを 1 本足しても DAZ Studio 側には何も現れない。</p>
 <pre><code>D:\Poser\My Poser Library                      ← 登録しても DAZ Studio には見えない
 D:\Poser\My Poser Library\davo_chamber7_Poser  ← これを登録すると見える</code></pre>
@@ -247,7 +247,19 @@ D:\Poser\My Poser Library\davo_chamber7_Poser  ← これを登録すると見�
 <p>拾える 6 製品は Basic Scifi Cuffs / Chamber 7 / Grungeon / V4 / V4M4 / Woman Inside。新規製品としては増えず、DS 版と同一製品の追加 <code>content_dirs</code> として畳まれる(<a class="ref" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a>)。</p>
 <p><strong>新しい Poser 製品を入れたときの手順:</strong></p>
 <ol><li>DAZ Studio の Content Directory Manager → Poser Formats に<strong>その製品フォルダ</strong>を追加</li><li><code>python vab.py load --phase scan --all</code>(既存製品の <code>content_dirs</code> を更新するため <code>--all</code> が要る)</li></ol></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a><a class="chip" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a></div>
+<div class="prose"><p><strong>なぜ DAZ Studio Formats は「置くだけ」で読まれるのに、Poser Formats は製品フォルダ登録が要るのか。</strong></p>
+<div class="table-wrap"><table><thead><tr><th></th><th>DAZ Studio Formats</th><th>Poser Formats</th></tr></thead><tbody><tr><td>ルート配下の構造</td><td><strong>自由</strong>。<code>.duf</code> はどこにあってもよい</td><td><strong>固定</strong>。ルート直下に <code>Runtime\Libraries\{Character,Props,Poses,…}</code></td></tr><tr><td>ペインの表示</td><td>フォルダツリーをそのまま見せる</td><td><code>Runtime\Libraries\&lt;種別&gt;</code> を列挙する</td></tr><tr><td>置くだけで見えるか</td><td>見える</td><td>直下に <code>Runtime\</code> が無ければ何も出ない</td></tr></tbody></table></div>
+<p>実測(2026-08-27):</p>
+<pre><code>D:\DAZ 3D\Studio\My Library      直下に Runtime\  あり
+D:\DAZ 3D\My DAZ 3D Library      直下に Runtime\  あり
+D:\Poser\My Poser Library        直下に Runtime\  なし   ← 子フォルダ側にある</code></pre>
+<p>このマシンの DAZ ライブラリ 2 本は<strong>両形式の要件を同時に満たしている</strong>ので、どちらのルートとしても機能する。<code>My Poser Library</code> だけが Poser の作法に合っていなかった、というだけの話。</p>
+<p><strong>副作用として注意すべき点。</strong> Poser 形式ファイルは DAZ ライブラリ側にも大量にあり、そのルートを Poser Formats に登録していないと DAZ Studio から見えない。</p>
+<div class="table-wrap"><table><thead><tr><th>ルート</th><th>Poser 形式(Runtime 直下)</th><th>Poser 形式(Runtime が入れ子)</th></tr></thead><tbody><tr><td><code>D:\DAZ 3D\My DAZ 3D Library</code></td><td><strong>3,363</strong></td><td>0</td></tr><tr><td><code>D:\DAZ 3D\Studio\My Library</code></td><td><strong>238</strong></td><td>146</td></tr><tr><td><code>D:\Poser\My Poser Library</code> 配下</td><td>0</td><td>85</td></tr></tbody></table></div>
+<p>2026-08-27 時点で Poser Formats に登録されているのは <code>D:\Poser\My Poser Library</code> とその子 4 本のみ。<strong>DAZ ライブラリ 2 本の Poser 形式 3,601 件は DAZ Studio の Poser Formats から見えない状態</strong>にある(セッション開始時は <code>C:\Users\Public\Documents\My DAZ 3D Library</code> が登録されていたが、差し替えの過程で外れた)。<code>.duf</code> 側は DAZ Studio Formats に 3 本とも残っているので影響なし。</p>
+<p><strong>入れ子の 146 件はどう登録しても DAZ Studio からは見えない。</strong> アーカイブのラッパーフォルダ越しに <code>Runtime\Libraries</code> があるためで、<a class="ref" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a> のおかげで <strong>VAB の方が DAZ Studio より広く見えている</strong>数少ない箇所。</p>
+<p><strong>VAB のインデックスはこの区分と無関係。</strong> ファイルを直接走査するので、Poser Formats に何が登録されていようと拾う件数は変わらない(<a class="ref" href="#poser-roots">Poser Formats は製品フォルダ単位で登録する</a> の実測表)。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a><a class="chip" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a><a class="chip" href="#poser-roots">Poser Formats は製品フォルダ単位で登録する</a></div>
 </section>
 </section>
 <section class="node node--section depth-0" id="problem">

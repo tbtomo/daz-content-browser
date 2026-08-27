@@ -202,6 +202,7 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     どちらも例外にならず `[]` が返るだけなので、誰も気付いていなかった。両方を直し、3 リスト(native / poser / other)を対象にしたうえで、`resolve_content_roots()` で **CMS のベースパスと和集合**を取る。古い CMS 行は無駄な走査 1 回で済むが、ルートの欠落はコンテンツを永久に不可視にするため。DAZ Studio 停止中は従来どおり CMS 側だけにフォールバックする。
     """
   convention poser-roots "Poser Formats は製品フォルダ単位で登録する":
+    daz_format_is_freeform: true
     daz_studio_sensitive: true
     found_by: "利用者の実機確認(2026-08-27)"
     vab_sensitive: false
@@ -231,6 +232,39 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
 
     1. DAZ Studio の Content Directory Manager → Poser Formats に**その製品フォルダ**を追加
     2. `python vab.py load --phase scan --all`(既存製品の `content_dirs` を更新するため `--all` が要る)
+    """
+    """
+    **なぜ DAZ Studio Formats は「置くだけ」で読まれるのに、Poser Formats は製品フォルダ登録が要るのか。**
+
+    | | DAZ Studio Formats | Poser Formats |
+    |---|---|---|
+    | ルート配下の構造 | **自由**。`.duf` はどこにあってもよい | **固定**。ルート直下に `Runtime\Libraries\{Character,Props,Poses,…}` |
+    | ペインの表示 | フォルダツリーをそのまま見せる | `Runtime\Libraries\<種別>` を列挙する |
+    | 置くだけで見えるか | 見える | 直下に `Runtime\` が無ければ何も出ない |
+
+    実測(2026-08-27):
+
+    ```
+    D:\DAZ 3D\Studio\My Library      直下に Runtime\  あり
+    D:\DAZ 3D\My DAZ 3D Library      直下に Runtime\  あり
+    D:\Poser\My Poser Library        直下に Runtime\  なし   ← 子フォルダ側にある
+    ```
+
+    このマシンの DAZ ライブラリ 2 本は**両形式の要件を同時に満たしている**ので、どちらのルートとしても機能する。`My Poser Library` だけが Poser の作法に合っていなかった、というだけの話。
+
+    **副作用として注意すべき点。** Poser 形式ファイルは DAZ ライブラリ側にも大量にあり、そのルートを Poser Formats に登録していないと DAZ Studio から見えない。
+
+    | ルート | Poser 形式(Runtime 直下) | Poser 形式(Runtime が入れ子) |
+    |---|---|---|
+    | `D:\DAZ 3D\My DAZ 3D Library` | **3,363** | 0 |
+    | `D:\DAZ 3D\Studio\My Library` | **238** | 146 |
+    | `D:\Poser\My Poser Library` 配下 | 0 | 85 |
+
+    2026-08-27 時点で Poser Formats に登録されているのは `D:\Poser\My Poser Library` とその子 4 本のみ。**DAZ ライブラリ 2 本の Poser 形式 3,601 件は DAZ Studio の Poser Formats から見えない状態**にある(セッション開始時は `C:\Users\Public\Documents\My DAZ 3D Library` が登録されていたが、差し替えの過程で外れた)。`.duf` 側は DAZ Studio Formats に 3 本とも残っているので影響なし。
+
+    **入れ子の 146 件はどう登録しても DAZ Studio からは見えない。** アーカイブのラッパーフォルダ越しに `Runtime\Libraries` があるためで、@poser-fix のおかげで **VAB の方が DAZ Studio より広く見えている**数少ない箇所。
+
+    **VAB のインデックスはこの区分と無関係。** ファイルを直接走査するので、Poser Formats に何が登録されていようと拾う件数は変わらない(@poser-roots の実測表)。
     """
 
 section problem "何が問題だったか":
