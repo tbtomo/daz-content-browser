@@ -45,7 +45,8 @@ hiddenimports = [
 # sentencepiece is the exception: it is small, pulls in no torch, and the query
 # translator needs it at runtime because Marian has no fast tokenizer and so ships
 # .spm files rather than a tokenizer.json (see src/query_translation.py).
-for pkg in ('chromadb', 'onnxruntime', 'tokenizers', 'sentencepiece'):
+for pkg in ('chromadb', 'onnxruntime', 'tokenizers', 'sentencepiece',
+            'ctranslate2'):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b

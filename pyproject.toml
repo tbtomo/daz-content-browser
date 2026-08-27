@@ -42,6 +42,7 @@ local_llm = [
     "transformers",
     "tokenizers",
     "sentencepiece",          # Marian tokenizer for the query translator (runtime)
+    "ctranslate2",            # optional query-translation backend (sugoi-v4)
 ]
 
 openai = [

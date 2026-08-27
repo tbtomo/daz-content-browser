@@ -1,0 +1,28 @@
+{
+  "_readme": [
+    "Japanese search terms mapped straight to the English wording this index uses,",
+    "bypassing the translation model for words it gets wrong.",
+    "",
+    "Matching is on the WHOLE query, trimmed — not substrings. A single kanji recurs",
+    "inside unrelated words, and rewriting 縄 wherever it appeared would turn 沖縄",
+    "(Okinawa) into 'rope'. A search query is usually the bare term anyway.",
+    "",
+    "Add a term when a Japanese search returns something unrelated: check what the",
+    "translator produced (the /api/v1/search response reports it as 'searched_as'),",
+    "and if that is the problem, map the term here. Put the English wording the",
+    "catalogue actually uses — grep enriched_products.db if unsure.",
+    "",
+    "The entries below are what sugoi-v4 romanises rather than translates. It reads",
+    "和室 as 'Wamuro' — not even the right reading — where the ONNX backend managed",
+    "'Japanese-style room'. Loanwords that romanise correctly (着物 Kimono, 浴衣",
+    "Yukata, 布団 Futon) need no entry, because that IS the English word."
+  ],
+  "terms": {
+    "和室": "Japanese-style room",
+    "縄": "rope",
+    "猿ぐつわ": "gag",
+    "フェチ": "fetish",
+    "胸": "breast",
+    "性器": "genitalia"
+  }
+}
