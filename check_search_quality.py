@@ -60,6 +60,13 @@ def search(url: str, query: str, min_relevance: float, max_results: int) -> dict
 
 
 def main() -> int:
+    # Japanese queries and the em dash below are outside cp932, which is still the
+    # console codepage on a Japanese Windows install. Degrade unencodable characters
+    # rather than let a UnicodeEncodeError abort the run — same guard as main.py.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
+
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--url", default="http://localhost:8000", help="Server base URL")
