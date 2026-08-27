@@ -103,3 +103,6 @@ build/
 .beads-credential-key
 
 .worktrees/
+
+# Vector store backups kept while swapping the embedding model.
+chroma_db.*.bak/
