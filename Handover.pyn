@@ -2,11 +2,11 @@ meta meta "この文書について":
   branch: feature/content-library-indexing
   canonical: "このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない"
   embedding_model_note: "BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯"
-  indexed_products: 3244
+  indexed_products: 3248
   indexed_products_before: 1620
   language: ja
   last_code_commit: "603764c(設定画面が実際のモデルと食い違わないように)"
-  last_session: "2026-08-28(翻訳バックエンドを sugoi + 辞書で確定)"
+  last_session: "2026-08-28(翻訳を sugoi + 辞書で確定、設定画面の不整合を修正、文書を棚卸し)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
@@ -26,11 +26,17 @@ goal goal "DAZ Studio の Content Library を VAB に取り込む":
   """
   Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。この本体部分は実装・検証・push まで完了している。
 
+  その後、日本語検索の実装とコンテンツルートまわりの修正が積み重なっている。
+
   追記の経緯:
 
   - 2026-08-25 — @roots(コンテンツルートの棚卸し。調査のみ、コード変更なし)
-  - 2026-08-27 — 引継ぎ文書を PYN 化(@doc-format)し、日本語の自由文検索に向けて埋め込みモデルを差し替え可能にした(@js-impl)。**切り替えそのものは未実行**(@js-switch)
-  - 2026-08-27(2 回目) — @poser-gap を CMS 接続下で切り分け、原因を確定。コード側の欠陥を修正した(@poser-fix)。残りは利用者側のルート追加操作
+  - 2026-08-27 — 引継ぎ文書を PYN 化(@doc-format)し、埋め込みモデルを差し替え可能にした(@js-impl)
+  - 2026-08-27(2 回目) — @poser-gap を CMS 接続下で切り分け、`Runtime/Libraries` の位置決め打ちを修正(@poser-fix)
+  - 2026-08-27(3 回目) — **コンテンツルートの情報源が誤っていたことが判明**(@roots-source)。`tblBasePath` は設定されたディレクトリではなかった。併せて日本語検索を実装(@js-switch → @jt-impl)、e5 を比較して不採用(@e5-trial)
+  - 2026-08-28 — 成人向け語彙が引けない問題を解決(@nsfw-gap)。LLM 案は測って不採用(@llm-trial)。UI と設定画面の不整合も修正(@ui-thresholds / @settings-truth)
+
+  **この文書で一番効いた教訓:** モデルを差し替える案を 2 回測って 2 回とも不採用になり、どちらも**用語表や小さな修正の方が勝った**(@e5-trial / @llm-trial)。日本語検索が変なときは、まずモデルではなく訳語と UI を疑うこと(@glossary-ops)。
   """
 
 section readme-start "30秒で再開するには":
@@ -39,7 +45,7 @@ section readme-start "30秒で再開するには":
   cd D:\OtherApps\daz-content-browser
   git status                                   # feature/content-library-indexing / clean のはず
   .venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
-  make dev-server                              # http://localhost:8000 に 3,244 製品
+  make dev-server                              # http://localhost:8000 に 3,248 製品(増減する)
   ```
 
   **日本語の自由文検索は動く。** 仕組みは 3 段:
@@ -67,7 +73,7 @@ section readme-start "30秒で再開するには":
   | 訳語を点検する | 不要 | `check_translation.py`(`--search` はサーバ起動が要る) |
   | 検索の品質を測る | 不要 | `check_search_quality.py` と `check_crosslingual.py`(要サーバ) |
   | コンテンツ追加後の再走査 | **必須** | ルートを DAZ Studio から引くため(@roots-source) |
-  | テストを全部通す | **必須** | 起動していれば 110 passed |
+  | テストを全部通す | **必須** | 起動していれば 113 passed |
 
   `ui/src` の submodule は**もう取得できない**(upstream のリポジトリが消えた)。UI を変えるときは `ui/dist` を直接パッチする。手順は @ui-thresholds。
 
@@ -75,25 +81,33 @@ section readme-start "30秒で再開するには":
   """
 
 section state "現在の状態":
-  commits: 29
+  commits: 37
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
-  indexed: 3244
+  indexed: 3248
   indexed_before: 1620
+  indexed_note: "2026-08-28 時点。買い足しや Update で動くので curl /api/v1/info が正"
   newly_found: 1624
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
   pushed: true
   tests: "113 passed(DAZ Studio 起動時)"
+  translation: "sugoi-v4(ctranslate2)+ 用語辞書 6 語。フォールバック fugumt(onnx)"
+  ui_patched: true
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
-  | インデックス済み | 3,244 | 作業前 1,620 |
-  | 新規に見えた製品 | 1,624 | cms-local 43 / filesystem 1,581 |
-  | ブランチのコミット | 16 | すべて fork に push 済み |
-  | テスト | 63 passed | DAZ Studio 停止中は `test_api.py` が 7 failed / 9 errors(@resume の 2) |
-  | 埋め込みモデル | `BAAI/bge-large-en-v1.5` | 差し替え可能になったが**まだ英語専用のまま**(@js-switch 未実行) |
+  | インデックス済み | **3,248** | 2026-08-28 時点。作業前 1,620 |
+  | 内訳 | daz-store 1,624 / cms-local 43 / filesystem 1,581 | |
+  | ブランチのコミット | 37 | すべて fork に push 済み(@repo-commits) |
+  | テスト | 113 passed | DAZ Studio 停止中は `test_api.py` が落ちる(@resume の 2) |
+  | 埋め込みモデル | `BAAI/bge-m3` | 2026-08-27 に英語専用モデルから切替(@js-switch) |
+  | 翻訳バックエンド | `sugoi-v4`(ctranslate2) | 用語辞書 6 語つき。フォールバックに `fugumt`(onnx) |
 
-  作業ツリーはクリーン、stash なし。UI は一切改造していない(理由は @design)。
+  **製品数は動く。** DAZ ストアで買い足せば増えるし、UI の Update ボタンや `vab.py load` を回すたびに変わる(実際 08-28 に 3,244 → 3,248 になった)。文書中の数字は書いた時点のもので、現在値は `curl -s http://localhost:8000/api/v1/info` が正しい。
+
+  作業ツリーはクリーン、stash なし。
+
+  **UI は当初「一切改造しない」方針だったが、現在は `ui/dist` を 3 回パッチしている**(@ui-thresholds)。`ui/src` の submodule が取得できなくなった(upstream のリポジトリが消えた)ため、UI を変える手段が minify 済みバンドルの直接編集しか無くなったのが理由。当初の設計判断は @design、その前提が崩れた経緯は @limits。
   """
 
 section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
@@ -388,15 +402,17 @@ section bugs "途中で直した既存バグ":
 
 section verify "検証したこと":
   """
+  **これは 2026-08-16〜18 の本体実装を検証した記録。** 以降のセッションで前提が変わった点は各節に分かれている(検証当時 3,239 製品・41 テスト・UI 無改造だったが、現在は 3,244 製品・113 テスト・`ui/dist` を 3 回パッチ済み)。
+
   - **テスト** — `pytest tests/` 41 件 green(新規 12 件を含む)。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認
   - **実データでの ETL** — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決
   - **実データでの走査** — filesystem 1,576 製品を登録。1,542 件(98%)にサムネイルあり
   - **API** — `/info` の内訳、意味検索でローカル製品がヒットすること、`/assets/{sku}` が fs 製品でディスクからファイルを返すこと、サムネイルが実 PNG(HTTP 200 / image/png)で返ることを確認
-  - **UI** — ブラウザで表示確認。UI 無改造のまま 3,239 製品が実サムネイル付きで並ぶ
-  - **Update ボタン** — `POST /api/v1/update` を実際に叩き、etl → scan → embed が走り差分 0 件で正常終了することを確認。走査中の進捗表示も追加後に再確認済み
+  - **UI** — ブラウザで表示確認。当時は UI 無改造のまま 3,239 製品が実サムネイル付きで並んだ
+  - **Update ボタン** — `POST /api/v1/update` を実際に叩き、etl → scan → embed が走り差分 0 件で正常終了することを確認
   - **DAZ Studio 連携** — Script Server 2.9.0 稼働中に `browse-folder` を実行し成功。実在したメソッドは `browseToPath`(`browseToFolder`/`browseToDir` は存在せず、候補を並べたフォールバックが効いた)
 
-  目視未確認: `browse-folder` は API が成功を返したところまで確認済み。DAZ Studio の Content Library ペインが実際に該当フォルダへ移動したかは画面が見えないため未確認。気になる場合は fs 製品で「開く」を押して確認されたい。
+  目視未確認: `browse-folder` は API が成功を返したところまで。DAZ Studio の Content Library ペインが実際に移動したかは未確認。気になる場合は fs 製品で「開く」を押して確認されたい。
   """
 
 section repo "リポジトリと環境":
@@ -413,17 +429,28 @@ section repo "リポジトリと環境":
     """
   section repo-commits "コミット":
     """
-    `main` から見た `feature/content-library-indexing` の全 12 コミット。すべて fork(`origin`)に push 済み。
+    `main` から見た `feature/content-library-indexing` の全 **37 コミット**(2026-08-28 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
 
     | SHA | 内容 |
     |---|---|
     | `46602c2` | Content Library の取り込み本体 |
-    | `78bbba3` | CLAUDE.md に bd 不使用の注記 |
     | `6377a05` | 走査中の進捗表示 |
     | `eb7bff9` | 検索の候補プールを 500 → 5000 に(@bug-search-cap) |
-    | `b921f51` 〜 `779b242` | 引継ぎ文書の追記 5 件(コード変更なし) |
     | `d9c8fa8` | 引継ぎ文書を PYN 化。HTML を生成物に(@doc-format) |
     | `100cd7e` | 埋め込みモデルを差し替え可能に(@js-impl) |
+    | `6cb6cd7` | `Runtime/Libraries` を相対パス中から探す(@poser-fix) |
+    | `4abe2ee` | コンテンツルートを DAZ Studio から取る(@roots-source) |
+    | `cf6a465` | `check_search_quality.py` の cp932 バグ |
+    | `953c59d` / `aace1c8` | Min match に 60%+ 追加 → bge-m3 に合わせて目盛りを作り直し(@ui-thresholds) |
+    | `01017d4` | ベクトル退避先を gitignore |
+    | `c72c154` | `check_crosslingual.py` を追加(@xl-bench) |
+    | `b037a17` | 日本語クエリを英訳してから埋め込む(@jt-impl) |
+    | `7ff790a` | 最小文字数のゲートを CJK 対応に(@ui-thresholds) |
+    | `ee43acb` | 成人向け語彙に対応した翻訳バックエンド(@nsfw-gap) |
+    | `3474433` | `check_translation.py` を追加(@glossary-ops) |
+    | `603764c` | 設定画面が実際のモデルと食い違わないように(@settings-truth) |
+
+    一覧は `git log --oneline main..HEAD` で出る。
     """
   section repo-env "環境で注意すべき点":
     """
@@ -905,13 +932,35 @@ section open "未着手・判断待ち":
 
 section resume "再開手順":
   """
-  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(08-27 時点で origin と同期済み)
-  2. **その日にできる作業は DAZ Studio を起動するかで決まる。** DAZ Studio が落ちていると `get_content_roots()` も `get_all_content_paths()` も引けず、ルート周りの調査(@poser-gap)は一切進まない。`tests/test_api.py` が 7 failed / 9 errors になるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237` へ接続できない)で、コードの不具合ではない
-  3. `make dev-server` でサーバ起動。`http://localhost:8000` に 3,239 製品が並べば前回の状態を再現できている
-  4. コンテンツを追加した場合は UI の Update ボタン、または `python vab.py load`。どちらも同じ処理
-  5. 検索の健全性チェックは `python check_search_quality.py`。英語 `office` で Min match: any が 3,239 件、70%+ が 2 件になれば **差し替え前の**状態として正常。any が 500 件で止まっていたら候補プールの上限を踏んでいる(@bug-search-cap)
-  6. **この引継ぎ文書を書き換えるときは `Handover.pyn` を直す。** `Handover.html` は生成物なので手で編集しない(@doc-format)
-  7. 続きから着手するなら @next-steps の 1 番から
+  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(2026-08-28 時点で origin と同期済み)
+
+  2. **DAZ Studio を起動するかどうかで、その日にできることが決まる。** 停止中は `get_content_roots()` も `get_all_content_paths()` も引けないので、**コンテンツを追加したときの再走査ができない**(@roots-source)。`tests/test_api.py` が落ちるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237`)で、コードの不具合ではない。起動していれば 113 passed。検索まわりの作業だけなら DAZ Studio は不要
+
+  3. **モデルが 3 つ要る。** `models/` は git に入らないので、クローンし直した直後は空。揃っていないと起動時に落ちるか、日本語検索が黙って劣化する
+
+     ```bash
+     python export_model.py --model BAAI/bge-m3                # 埋め込み 2,179MB(必須)
+     python export_translation_model.py                        # 翻訳 onnx 361MB(必須。フォールバック先)
+     python export_translation_model.py --backend ctranslate2  # 翻訳 sugoi 1.1GB(成人向け語彙)
+     ```
+
+  4. `make dev-server` でサーバ起動。`http://localhost:8000` に製品が並べば前回の状態を再現できている(08-28 時点で 3,248。買い足せば増える)
+
+  5. **健全性チェックは 3 つ。** どれもサーバ起動が要る
+
+     ```bash
+     python check_search_quality.py     # 件数と応答時間。閾値の分布を見る
+     python check_crosslingual.py       # 日本語が英語版と同じものを返すか(基準 8.33/10)
+     python check_translation.py 和室   # 訳語そのものを見る(--search で結果も)
+     ```
+
+     **数値の目安はモデルに紐づく。** 過去の記述にある「50%+ で 3,236 件」「70%+ で 2 件」は bge-large-en-v1.5 時代のもので、bge-m3 には当てはまらない(@js-switch の分布表)
+
+  6. コンテンツを追加したら `python vab.py load --phase scan --all`。**既存製品の `content_dirs` を更新するには `--all` が要る**(差分実行は既存 SKU を読み飛ばす)
+
+  7. **この引継ぎ文書を書き換えるときは `Handover.pyn` を直す。** `Handover.html` は生成物なので手で編集しない。pyn 本体はこのリポジトリに入っていないので、触る前に clone すること(@doc-format)
+
+  8. 続きから着手するなら @next-steps の 1 番から
   """
 
 section commands "コマンド早見表":
