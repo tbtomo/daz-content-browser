@@ -1,18 +1,18 @@
 meta meta "この文書について":
   branch: feature/content-library-indexing
   canonical: "このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない"
-  indexed_products: 3239
+  indexed_products: 3244
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "100cd7e(埋め込みモデルを差し替え可能に)"
-  last_session: "2026-08-27(日本語検索: モデル差し替えのためのコード側対応。モデル本体のDLと再埋め込みは未実行)"
+  last_code_commit: "6cb6cd7(Runtime/Libraries を相対パス中から探す)"
+  last_session: "2026-08-27(@poser-gap の切り分けと②の修正。①は未対処)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
-  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27"
+  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)"
   status: implemented_verified_and_pushed
-  test_note: "tests/ は DAZ Studio(CMS PostgreSQL)が起動していないと test_api.py が 7 failed / 9 errors になる。埋め込み側の 11 件を含むそれ以外は green"
+  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 55 passed。停止中は test_api.py が 7 failed / 9 errors"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -29,6 +29,7 @@ goal goal "DAZ Studio の Content Library を VAB に取り込む":
 
   - 2026-08-25 — @roots(コンテンツルートの棚卸し。調査のみ、コード変更なし)
   - 2026-08-27 — 引継ぎ文書を PYN 化(@doc-format)し、日本語の自由文検索に向けて埋め込みモデルを差し替え可能にした(@js-impl)。**切り替えそのものは未実行**(@js-switch)
+  - 2026-08-27(2 回目) — @poser-gap を CMS 接続下で切り分け、原因を確定。コード側の欠陥を修正した(@poser-fix)。残りは利用者側のルート追加操作
   """
 
 section readme-start "30秒で再開するには":
@@ -37,7 +38,7 @@ section readme-start "30秒で再開するには":
   cd D:\OtherApps\daz-content-browser
   git status                                   # feature/content-library-indexing / clean のはず
   .venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
-  make dev-server                              # http://localhost:8000 に 3,239 製品
+  make dev-server                              # http://localhost:8000 に 3,244 製品
   ```
 
   **いま何をするかは @next-steps の 1 番。** 日本語検索のためのコード側対応は済んでいて(@js-impl)、残っているのは **モデルのダウンロードと再埋め込みという実行作業だけ**(@js-switch)。回線と CPU 時間を使うので、意図的に未実行のまま残してある。
@@ -46,32 +47,34 @@ section readme-start "30秒で再開するには":
 
   > `Handover.pyn` を読んで、@js-switch の手順を実行してください。実行前後で `check_search_quality.py` を走らせて比較すること。
 
-  中断地点はもう 1 つある。@poser-gap の調査は **DAZ Studio(CMS PostgreSQL)が起動していないと 1 ミリも進まない**。テストの `test_api.py` が落ちるのも同じ理由なので、まず DAZ Studio を起動するかどうかで、その日にできる作業が決まる。
+  中断地点はもう 1 つある。@poser-gap は 2026-08-27 に原因が確定し、コード側(②)は修正済み。**残りは DAZ Studio の Content Directory Manager に `D:\Poser\My Poser Library` を追加するという利用者側の操作だけ**で、これは AI には代行できない。追加後の再走査は @next-steps の 2 番。
+
+  なお `tests/test_api.py` は DAZ Studio(CMS PostgreSQL)が停止していると落ちる。起動していれば 55 passed。
 
   | やりたいこと | DAZ Studio | 回線 |
   |---|---|---|
   | 日本語検索の切り替え(@js-switch) | 不要 | 約 2.2GB |
-  | Poser 取りこぼしの切り分け(@poser-gap) | **必須** | 不要 |
+  | Poser 取りこぼしの残り(@poser-gap ①) | **必須**(利用者の操作) | 不要 |
   | テストを全部通す | **必須** | 不要 |
   """
 
 section state "現在の状態":
-  commits: 12
+  commits: 14
   embedding_model: "BAAI/bge-large-en-v1.5(差し替え可能だが未切替)"
-  indexed: 3239
+  indexed: 3244
   indexed_before: 1620
-  newly_found: 1619
+  newly_found: 1624
   newly_found_cms_local: 43
-  newly_found_filesystem: 1576
+  newly_found_filesystem: 1581
   pushed: true
-  tests: "36 passed(DAZ Studio 停止中は test_api.py が 7 failed / 9 errors)"
+  tests: "55 passed(DAZ Studio 起動時)"
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
-  | インデックス済み | 3,239 | 作業前 1,620 |
-  | 新規に見えた製品 | 1,619 | cms-local 43 / filesystem 1,576 |
-  | ブランチのコミット | 12 | すべて fork に push 済み |
-  | テスト | 36 passed | DAZ Studio 停止中は `test_api.py` が 7 failed / 9 errors(@resume の 2) |
+  | インデックス済み | 3,244 | 作業前 1,620 |
+  | 新規に見えた製品 | 1,624 | cms-local 43 / filesystem 1,581 |
+  | ブランチのコミット | 14 | すべて fork に push 済み |
+  | テスト | 55 passed | DAZ Studio 停止中は `test_api.py` が 7 failed / 9 errors(@resume の 2) |
   | 埋め込みモデル | `BAAI/bge-large-en-v1.5` | 差し替え可能になったが**まだ英語専用のまま**(@js-switch 未実行) |
 
   作業ツリーはクリーン、stash なし。UI は一切改造していない(理由は @design)。
@@ -79,11 +82,11 @@ section state "現在の状態":
 
 section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
   added: 2026-08-25
-  code_changed: false
+  code_changed: "no(この節の調査時点。後続の @poser-fix で修正あり)"
   """
-  利用者から現在のコンテンツ配置を教わったので、SQLite のインデックス内容と実ディスクを突き合わせた。**コードは変更していない**。この節は調査結果のみで、対処は @open に積んである。
+  利用者から現在のコンテンツ配置を教わったので、SQLite のインデックス内容と実ディスクを突き合わせた。**この節を書いた時点ではコードを変更していない**(その後 @poser-fix で 1 件修正した)。調査結果と、そこから出た対処は @open に積んである。
 
-  前提として、走査対象のルートは `.env` ではなく **CMS の `dzcontent."tblBasePath"`** が真実(`daz_db_analyzer.get_content_roots()`)。この調査時点で DAZ Studio が起動しておらず PostgreSQL に接続できなかったため、*いま CMS が何本返すかは未確認*。以下の数字は最後のスキャン結果(SQLite の `content_dirs`)と実ディスクの実測に基づく。
+  前提として、走査対象のルートは `.env` ではなく **CMS の `dzcontent."tblBasePath"`** が真実(`daz_db_analyzer.get_content_roots()`)。**2026-08-27 に DAZ Studio 起動下で実測したところ 8 本を返し、`dedupe_roots()` 後は 5 本になった**(内訳は @poser-gap)。以下の表は最後のスキャン結果(SQLite の `content_dirs`)と実ディスクの実測に基づく。
   """
   section roots-junction "ルートは 4 本ではなく実質 3 本":
     """
@@ -107,25 +110,72 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     - **`My DAZ 3D Library` の 12 製品は正常。** ファイル数は最大だが、ここは DIM がインストールする場所でほぼ全ファイルが CMS 登録済み。tracked として差し引かれ、daz-store 側 1,620 製品として既に入っている
     - **OneDrive のルートが 0 なのも正常。** 中身は `.dsf` 129 件のみ(`data/` 相当のサポートファイル)で、ユーザ向けファイルが 1 つも無い
     """
-  issue poser-gap "未解決:Poser ライブラリが 1 製品しか拾えていない":
-    blocked_by: "CMS(PostgreSQL)に接続できないと確定できない"
+  issue poser-gap "原因確定・一部修正済み:Poser ライブラリが 1 製品しか拾えていない":
+    blocked_by: "CMS が D:/Poser/My Poser Library の親をルート登録していない。対処は DAZ Studio 側の操作"
+    diagnosed: 2026-08-27
     missing_files: 65
     missing_products: ["GRUNGEON Equipment Pack 6_Poser", davo_chamber7_Poser]
+    original_hypothesis: disproved
     root: "D:\\Poser\\My Poser Library"
-    status: open
+    status: diagnosed_partially_fixed
     """
-    `D:\Poser\My Poser Library` には製品フォルダが 4 つあるが、インデックスに入ったのは Woman Inside(`Darkseal_WomanInside` と `…2` を 1 製品に統合)だけ。`GRUNGEON Equipment Pack 6_Poser` と `davo_chamber7_Poser`(合わせて .pz2/.pp2 65 件)が落ちている。
+    `D:\Poser\My Poser Library` には製品フォルダが 4 つあるが、インデックスに入ったのは Woman Inside だけ。**2026-08-27 に CMS へ接続して切り分けを行い、原因が確定した。当初の仮説(tracked キーのルート跨ぎ衝突)は誤りだった。**
 
-    疑わしいのは tracked 判定のキー。`load_tracked_files()` と `collect_untracked_dirs()` は **(ルート相対パス, ファイル名) だけで照合していて、どのルート配下かを見ていない**。
+    原因は独立した 2 つで、**両方を直さないと GRUNGEON / chamber7 は入らない**。
 
-    ```python
-    # filesystem_scanner.collect_untracked_dirs()
-    key = (str(rel.parent).replace("\\", "/").lower(), rel.name.lower())
+    **① CMS が Poser ライブラリの「子」をルート登録している(未対処)**
+
+    `tblBasePath` は 8 本を返し、`dedupe_roots()` 後は 5 本になる。
+
+    ```
+    D:\DAZ 3D\My DAZ 3D Library
+    D:\Poser\My Poser Library\Darkseal_WomanInside2     ← 製品ディレクトリがルート
+    D:\Poser\My Poser Library\Darkseal_WomanInside      ← 同上
+    D:\DAZ 3D\Studio\My Library
+    C:\Users\tabby\OneDrive\…\Studio\My Library
     ```
 
-    この 2 製品は DS 版が `My Library` 側に CMS 登録済みで、Poser 版と相対パスが衝突した可能性が高い。ただし「CMS が Poser ルートも直接登録しているので単に tracked だった」という素直な説明も成り立ち、**CMS に接続できないうちは確定できない**。切り分けは `get_all_content_paths()` の結果に Poser 側の相対パスが含まれるかを見ればよい。
+    親の `D:\Poser\My Poser Library` は登録されていない。`davo_chamber7_Poser`(151 ファイル)と `GRUNGEON Equipment Pack 6_Poser`(83 ファイル)は**どのルート配下にも入らず、走査対象そのものに含まれていない**。
 
-    併せて、`collect_untracked_dirs()` は末尾で tracked が 1 以上のディレクトリを丸ごと捨てる。1 ファイルでも衝突すると同じディレクトリの未登録ファイルまで消えるので、キーをルート込み(絶対パス)にする修正はこの捨て方の見直しとセットで考えること。
+    tracked 説を否定する裏付けも取れている。`dzcontent.content` に `GRUNGEON` / `chamber7` / `WomanInside` を含む行は **0 件**で、衝突しようがない。したがって「tracked が 1 以上のディレクトリを丸ごと捨てる」処理もこの件とは無関係(その懸念自体は残るが、別件)。
+
+    ルートは CMS が真実なので、対処は **DAZ Studio の Content Directory Manager で `D:\Poser\My Poser Library` を追加する**という利用者側の操作になる。
+
+    **② `Runtime/Libraries` の位置決め打ち(2026-08-27 に修正済み)**
+
+    ①だけ直しても効かない。むしろ親をルートに足すと `My Poser Library` から拾える製品が **1 → 0 に減る**という実測結果だった。
+
+    `walk_content_files()` は Poser 形式を `is_runtime_path()` が真のときしか受け付けず、その判定が `parts[0]=="runtime" and parts[1]=="libraries"` というルート直下決め打ちだったため。親をルートにすると相対パスが `davo_chamber7_Poser\Runtime\Libraries\…` になり全件却下される。
+
+    これは Poser ライブラリ固有の話ではなく、**現行ルート配下のアーカイブラッパー越しの `Runtime\Libraries` 64 サブツリーでも、Poser ファイル 146 件が取りこぼされていた**。
+
+    修正は `runtime_index()` の導入(相対パス中から `Runtime/Libraries` の対を探す)。詳細は @poser-fix。
+    """
+  task poser-fix "Runtime/Libraries の位置決め打ちを修正(2026-08-27)":
+    commit: 6cb6cd7
+    files_recovered: 146
+    indexed_after: 3244
+    sku_churn: none
+    status: done
+    tests_added: 3
+    """
+    @poser-gap の②に対する修正。`runtime_index(parts)` を新設し、`Runtime/Libraries` の対を相対パス中から探すようにした。`is_runtime_path` / `runtime_group_key` / `_infer_name_vendor` / `_context_label` をこれに載せ替えている。
+
+    **SKU の作り直しは起きなかった。** 修正前後で全 fs 製品の SKU を突き合わせたところ削除 0 / 追加 2。`group_into_products()` は `strip_wrapper()` を通した後の `rel_parts` を分類するので、ラッパー越しの `Runtime` は元々剥がされて `runtime` 判定になっていた。実際に効いたのは `walk_content_files()`(生の相対パスを見る)側だけ。既存 ChromaDB もそのまま有効。
+
+    なお `list_files_for_dirs()` は元から「パス中のどこかに Runtime と Libraries があれば可」という緩い判定で、走査側とズレていた。この修正で両者が揃った。
+
+    実データでの結果:
+
+    | | 修正前 | 修正後 |
+    |---|---|---|
+    | filesystem 製品 | 1,576 | 1,581 |
+    | インデックス合計 | 3,239 | 3,244 |
+    | Woman Inside のファイル数 | 6 | 9 |
+
+    `pytest tests/` は 55 passed(DAZ Studio 起動中のため `test_api.py` も green)。テストは 3 件追加。
+
+    **①が未対処なので GRUNGEON / chamber7 はまだ入っていない。** 親をルートに追加した場合のシミュレーション(修正後のコードで実施)では、`My Poser Library` から Woman Inside / V4M4 / V4 / Basic Scifi Cuffs / Chamber 7 / Grungeon の 6 製品が拾える。
     """
 
 section problem "何が問題だったか":
@@ -295,9 +345,9 @@ section repo "リポジトリと環境":
 section open "未着手・判断待ち":
   section next-steps "次の一手(2026-08-27 時点)":
     """
-    1. **日本語検索を実際に有効化する。** コード側は済んでいる(@js-impl)。残るはモデル DL・ChromaDB 作り直し・3,239 件の再埋め込みで、手順は @js-switch。DAZ Studio は不要、回線と CPU 時間だけ要る。切り替え前に `python check_search_quality.py --json > before.json` を取っておくこと
-    2. **DAZ Studio を起動して CMS を上げ、`get_content_roots()` が今どのルートを返すか確認する。** ルートは CMS の `tblBasePath` が真実なので、ここが実際の配置とズレていると走査対象そのものがズレる。前回スキャン時点では 4 ルート(うち 1 本はジャンクション)を見ていた
-    3. **Poser ルートの取りこぼしを切り分ける。** `get_all_content_paths()` に `GRUNGEON Equipment Pack 6_Poser` / `davo_chamber7_Poser` の相対パスが含まれるか見る。含まれなければ tracked キーのルート跨ぎ衝突が原因なので、キーを絶対パスに変え、`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理も併せて見直す。詳細は @poser-gap
+    1. **日本語検索を実際に有効化する。** コード側は済んでいる(@js-impl)。残るはモデル DL・ChromaDB 作り直し・3,244 件の再埋め込みで、手順は @js-switch。DAZ Studio は不要、回線と CPU 時間だけ要る。切り替え前に `python check_search_quality.py --json > before.json` を取っておくこと
+    2. **`D:\Poser\My Poser Library` をコンテンツディレクトリに追加する。** DAZ Studio の Content Directory Manager での操作。これが @poser-gap の①で、残っている唯一の対処。追加後に `python vab.py load --phase scan` → `--phase embed` を回せば GRUNGEON / chamber7 を含む 5 製品が増えるはず(@poser-fix の末尾に予測を書いてある)
+    3. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** @poser-gap とは無関係と判明したが、1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる、という性質自体は残っている。実害が出ているかは未測定
     4. 修正を入れたら `python vab.py load --phase scan` で再走査し、`/api/v1/info` の `products_by_source` で filesystem の件数が増えるかを確認する
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
