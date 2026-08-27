@@ -1,11 +1,12 @@
 meta meta "この文書について":
   branch: feature/content-library-indexing
   canonical: "このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない"
+  embedding_model_note: "BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯"
   indexed_products: 3244
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "4abe2ee(コンテンツルートを DAZ Studio から取る)"
-  last_session: "2026-08-27(@poser-gap を解決。ルートの情報源を CMS から DAZ Studio に変更)"
+  last_code_commit: "aace1c8(bge-m3 に合わせて閾値を作り直し)"
+  last_session: "2026-08-27(@js-switch を実行。日本語検索が動くようになった)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
@@ -41,22 +42,24 @@ section readme-start "30秒で再開するには":
   make dev-server                              # http://localhost:8000 に 3,244 製品
   ```
 
-  **いま何をするかは @next-steps の 1 番。** 日本語検索のためのコード側対応は済んでいて(@js-impl)、残っているのは **モデルのダウンロードと再埋め込みという実行作業だけ**(@js-switch)。回線と CPU 時間を使うので、意図的に未実行のまま残してある。
+  **2026-08-27 に日本語検索が動くようになった(@js-switch)。** 埋め込みモデルは `BAAI/bge-m3` に切り替え済みで、「ロングヘアの女性キャラ」のような日本語の自由文がそのまま引ける。旧モデルのベクトルは `chroma_db.bge-large-en-v1.5.bak/` に退避してあるので戻すこともできる。
 
-  **@poser-gap は 2026-08-27 に解決した。** 併せてコンテンツルートの情報源が CMS から DAZ Studio 本体に変わっている(@roots-source)。走査の対象が変わる変更なので、ルート周りで挙動を疑うときはまずそこを読むこと。
+  **類似度の絶対値がモデルごとに違う点に注意。** bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は `Any / 40%+ / 45%+ / 50%+ / 60%+` に作り直してある(@ui-thresholds)。過去の文書にある「50%+ で 3,236 件」といった目安は bge-large-en-v1.5 時代のもので、いまは当てはまらない。
 
-  | やりたいこと | DAZ Studio | 回線 |
+  **いま何をするかは @next-steps の 1 番。** ただし 1 番は「判断」であって作業ではない。手を動かす前に、何を良しとするかを決める必要がある。
+
+  | やりたいこと | DAZ Studio | 備考 |
   |---|---|---|
-  | 日本語検索の切り替え(@js-switch) | 不要 | 約 2.2GB |
-  | コンテンツ追加後の再走査 | **必須**(ルートを引くため) | 不要 |
-  | テストを全部通す | **必須** | 不要 |
+  | 検索の品質を測る | 不要 | `python check_search_quality.py`(サーバ起動が要る) |
+  | コンテンツ追加後の再走査 | **必須** | ルートを DAZ Studio から引くため(@roots-source) |
+  | テストを全部通す | **必須** | 起動していれば 63 passed |
 
-  DAZ Studio が停止していても走査自体は動くが、ルートは CMS 側だけにフォールバックするので Poser ライブラリが対象から外れる。`tests/test_api.py` が落ちるのも DAZ Studio 停止が理由で、起動していれば 63 passed。
+  `ui/src` の submodule は**もう取得できない**(upstream のリポジトリが消えた)。UI を変えるときは `ui/dist` を直接パッチする。手順は @ui-thresholds。
   """
 
 section state "現在の状態":
-  commits: 16
-  embedding_model: "BAAI/bge-large-en-v1.5(差し替え可能だが未切替)"
+  commits: 20
+  embedding_model: "BAAI/bge-m3(2026-08-27 に切替済み。旧モデルのベクトルは .bak に退避)"
   indexed: 3244
   indexed_before: 1620
   newly_found: 1624
@@ -351,16 +354,16 @@ section repo "リポジトリと環境":
 section open "未着手・判断待ち":
   section next-steps "次の一手(2026-08-27 時点)":
     """
-    1. **日本語検索を実際に有効化する。** コード側は済んでいる(@js-impl)。残るはモデル DL・ChromaDB 作り直し・3,244 件の再埋め込みで、手順は @js-switch。DAZ Studio は不要、回線と CPU 時間だけ要る。切り替え前に `python check_search_quality.py --json > before.json` を取っておくこと
-    2. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** @poser-gap とは無関係と判明したが、1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる、という性質自体は残っている。実害が出ているかは未測定
-    3. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る(`--force` と違い SQLite も ChromaDB も消えない)。毎回これで良いのではないか、という設計判断は保留のまま
-    4. **`embedding_text` の更新も差分実行では起きない。** 上記 `--all` で `content_dirs` が変わっても再埋め込みは走らないので、ChromaDB 側は古いテキストのまま。実害は小さいと判断して 2026-08-27 は再埋め込みしていない
+    1. **和室の背景の後退を許容するか判断する。** bge-m3 は日本固有の語彙(和室、床の間など)が弱く、切り替え前に 1 位だった `Japanese Onsen` が 5 位に落ちた。他の日本語クエリは明確に改善しているので全体としては前進だが、気になるなら日本語特化モデル(`intfloat/multilingual-e5-large` など)の比較を検討する。E5 系は `query: ` / `passage: ` 接頭辞が要るが、その規約は `_MODEL_CONVENTIONS` に実装済み(@js-impl)
+    2. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
+    3. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る(`--force` と違い SQLite も ChromaDB も消えない)
+    4. **`chroma_db.bge-large-en-v1.5.bak/` を残すか捨てるか。** 31MB。bge-m3 で確定なら消してよい
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
     chosen: "案 1(BAAI/bge-m3 へ差し替え)"
-    status: code_ready_model_swap_pending
-    ui_change_needed: false
+    status: done
+    ui_change_needed: "結果的に必要だった(閾値の目盛り。@ui-thresholds)"
     """
     思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。
 
@@ -387,8 +390,8 @@ section open "未着手・判断待ち":
       インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。`query_model` が `embedding_model` と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、**翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える**のと、訳語のブレがそのまま検索品質のブレになるのが難点。@js-model-swap が通るならそちらが素直。
       """
     task js-impl "コード側の対応(実装済み・2026-08-27)":
-      model_downloaded: false
-      reindexed: false
+      model_downloaded: true
+      reindexed: true
       status: done
       tests_added: 11
       """
@@ -409,34 +412,94 @@ section open "未着手・判断待ち":
 
       既定モデルでの出力はビット単位で従来と一致することを確認済み(`_mean_pool` に同じ入力を通して差分 0.0)。**既存の ChromaDB 3,239 件はそのまま有効。**
       """
-    runbook js-switch "切り替え手順(未実行)":
+    runbook js-switch "切り替え手順(2026-08-27 実行済み)":
       download_size: "約 2.2GB"
+      embed_seconds: 48
+      executed: 2026-08-27
+      latency_change: "なし(約 2.3〜2.5 秒で前後同じ)"
+      model_size_mb: 2179
       rescan_needed: false
       rescrape_needed: false
+      rollback: "chroma_db.bge-large-en-v1.5.bak/ を chroma_db/ に戻し .env をコメントアウト"
       """
-      ```bash
-      python check_search_quality.py --json > before.json   # 切り替え前の実測を保存
-
-      python export_model.py --model BAAI/bge-m3            # → models/bge-m3/
-      rd /s /q chroma_db                                    # 旧モデルのベクトルは流用できない
-      ```
-
-      `.env` の `EMBEDDING_MODEL_ID=BAAI/bge-m3` を有効化してから:
+      2026-08-27 に実行し、**日本語の自由文検索は動くようになった**。所要は実測でモデル DL・ONNX 化が十数分、再埋め込みが 3,244 件で 48 秒。
 
       ```bash
-      python vab.py load --phase embed                      # SQLite から 3,239 件を再埋め込み
-      make dev-server
-      python check_search_quality.py --json > after.json     # 日本語クエリを含めて比較
+      python export_model.py --model BAAI/bge-m3     # → models/bge-m3/ (2,179 MB)
+      mv chroma_db chroma_db.bge-large-en-v1.5.bak   # 削除せず退避(戻せるように)
+      # .env の EMBEDDING_MODEL_ID=BAAI/bge-m3 を有効化
+      python vab.py load --phase embed               # 3,244 件、48 秒
       ```
 
-      Web スクレイピングも Content Library 走査も走らない(`embedding_text` は SQLite に残っているため)。
+      @js-impl で入れた 2 つの修正がここで効いた。ログの `model=BAAI/bge-m3 pooling=cls max_length=512 inputs=['input_ids', 'attention_mask']` がその証拠で、**`token_type_ids` が入力に無い**。修正前ならこの瞬間に `InvalidArgument` で落ちていた。
 
-      見るべき点:
+      **懸念していた CPU 推論の悪化は起きなかった。** 検索応答は約 2.3〜2.5 秒で切り替え前と同じ。@js-model-swap に書いた「bge-m3 は大きいので遅くなる可能性」は、この規模では顕在化しなかった。
 
-      - 「和室の背景」「ロングヘアの女性キャラ」で意味のある上位結果が出るか
-      - `office` / `dress` / `forest` の英語検索が劣化していないか
-      - 応答時間。`bge-m3` は現行より大きいので CPU 推論は遅くなる。埋め込み時間も含めて実測すること
-      - **閾値の目安は作り直しになる。** @bug-search-cap で測った「50%+ で 3,236 件、70%+ で 2 件」は別モデルには引き継げない
+      旧ベクトルは `chroma_db.bge-large-en-v1.5.bak/`(31MB、gitignore 済み)に残してある。戻すなら `.env` の `EMBEDDING_MODEL_ID` をコメントアウトし、このディレクトリを `chroma_db/` に戻すだけでよい(再埋め込み不要)。
+      """
+      """
+      **日本語クエリの上位結果は明確に良くなった。**
+
+      | クエリ | 切り替え前の 1 位 | 切り替え後の 1 位 |
+      |---|---|---|
+      | ロングヘアの女性キャラ | PN Kikyou for Genesis 9 | **HM Long Hair V for Genesis 9** |
+      | 中世の鎧を着た戦士 | CS01: Fighting Poses | **dForce Scarlet Valkyrie Fantasy Armor** |
+      | 和室の背景 | Japanese Onsen | Waiting Area Vignette |
+
+      ロングヘアは上位 5 件すべてがロングヘアのキャラ/ヘア製品、中世の鎧は鎧・武器・戦闘系で揃う。
+
+      **和室の背景だけは後退した。** 「室内の背景」までは理解しているが「和室」が効いておらず、切り替え前に 1 位だった `Japanese Onsen` が 5 位(0.488)に落ちている。上位は Waiting Area Vignette / Dystopian Room Interior / The Lotus Suite / Staircase Vignette。日本固有の語彙は弱い、という限界として残る。
+
+      英語は実用上ほぼ同等。`forest` の 1 位が `My Tree Pack` → `The Mountains` に変わったが `My Tree Pack` は 2 位(0.492)。
+      """
+      """
+      **類似度の絶対値が大きく下がったため、UI の目盛りを作り直した(@ui-thresholds)。**
+
+      | | bge-large-en-v1.5 | bge-m3 |
+      |---|---|---|
+      | 上位ヒットのスコア | 0.7 超 | 0.46〜0.62 |
+      | 中央値 | 約 0.5 | 0.31〜0.39 |
+      | 実用的に効く帯 | 60〜70% | **40〜50%** |
+
+      ベンチ 6 クエリでの実測件数:
+
+      | クエリ | 35% | 40% | 45% | 50% | 55% | 60% |
+      |---|---|---|---|---|---|---|
+      | office | 2743 | 451 | 26 | 7 | 1 | 0 |
+      | dress | 3175 | 2123 | 632 | 172 | 13 | 0 |
+      | forest | 344 | 46 | 13 | 0 | 0 | 0 |
+      | 和室の背景 | 1859 | 319 | 44 | 1 | 0 | 0 |
+      | ロングヘアの女性キャラ | 2828 | 1383 | 312 | 77 | 12 | 2 |
+      | 中世の鎧を着た戦士 | 683 | 105 | 6 | 0 | 0 | 0 |
+
+      @bug-search-cap に書いた「50%+ で 3,236 件、70%+ で 2 件」という目安は、予告どおり完全に無効になった。
+      """
+    task ui-thresholds "UI の Min match を作り直した(2026-08-27)":
+      commits: "953c59d, aace1c8"
+      ladder: "Any / 40%+ / 45%+ / 50%+ / 60%+"
+      status: done
+      ui_src_available: false
+      """
+      検索の Min match は `Any / 50%+ / 70%+ / 90%+` の 4 段だった。3,244 製品では下 2 段が選択的でなく(office は 50% で 3,236 件、70% で 2 件)、実用的な帯がまるごと選べなかった。
+
+      **`ui/src` の submodule はもう取得できない。** upstream の UI リポジトリが消えている。
+
+      ```
+      remote: Repository not found.
+      fatal: repository 'https://github.com/bluemoonfoundry/bmf-daz-content-browser-ui.git/' not found
+      ```
+
+      したがって「submodule を取得すれば UI を直せる」という @limits の記述は**もう成り立たない**。ビルド済み `ui/dist` を直接パッチするのが唯一の手段になる。
+
+      対象は minify 済みバンドル内の 1 配列だけなので、実務上は難しくない。
+
+      ```js
+      jr=[{label:`Any`,value:0},{label:`40%+`,value:.4},{label:`45%+`,value:.45},{label:`50%+`,value:.5},{label:`60%+`,value:.6}]
+      ```
+
+      **バンドルのファイル名も必ず付け替えること。** Vite はコンテンツハッシュで命名するので、中身だけ変えて名前を据え置くとブラウザのキャッシュが古い方を出し続ける。`ui/dist/index.html` の `<script src>` も併せて書き換える。サーバ再起動は不要(静的ファイルは都度ディスクから配信)。
+
+      目盛りの値そのものはモデル依存。bge-large-en-v1.5 に戻すなら 60/70/90 の側が再び正しくなる(@js-switch の表)。
       """
   section pending "判断待ち":
     """
@@ -447,9 +510,10 @@ section open "未着手・判断待ち":
     """
     - **グルーピングの過剰マージが 4 件。** ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。`.env` の `SCAN_MIN_PRODUCT_DEPTH`(既定 5)で調整できる
     - **物理的に 2 箇所へ展開された製品は別製品として出る場合がある。** 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える
-    - **UI の Update ボタンが `force` をどう送っているか未確認。** `ui/src` が未チェックアウトのため。差分実行(`force: false`)で動くことは API 経由で確認済み
-    - **UI 自体は未改造。** `source` は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる
-    - **検索は毎回ほぼ全製品を 1 応答で返す。** 候補プールを 5000 に上げた結果、"office" のような一般語では 3,239 件・1.88MB が返る(0.60 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はプールを更に広げることではなく、サーバ側ページングの導入(`ui/src` の submodule が要る)
+    - **UI の Update ボタンが `force` をどう送っているか未確認。** 差分実行(`force: false`)で動くことは API 経由で確認済み
+    - **`ui/src` の submodule はもう取得できない。** upstream の `bmf-daz-content-browser-ui` が消えている(`Repository not found`)。以前ここには「submodule を取得すればフィルタを追加できる」と書いてあったが、**それはできない**。UI を変えるなら `ui/dist` のバンドルを直接パッチする(@ui-thresholds に手順)。`source` は API が返しているので「Content Library のみ表示」のようなフィルタ自体は作れる
+    - **検索は毎回ほぼ全製品を 1 応答で返す。** 候補プールを 5000 に上げた結果、Min match: Any では 3,244 件・1.84MB が返る(約 2.5 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はサーバ側ページングだが、`ui/src` が失われた以上 UI 側の対応はバンドルのパッチになる
+    - **bge-m3 は日本固有の語彙が弱い。** 「和室」が効かず、`Japanese Onsen` が 1 位から 5 位に落ちた(@js-switch)
     """
 
 section resume "再開手順":

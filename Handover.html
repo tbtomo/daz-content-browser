@@ -104,7 +104,7 @@ a{color:var(--accent)}
 <h2 class="node__title">この文書について</h2>
 <a class="node__id" href="#meta">meta</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>canonical</th><td><code>&quot;このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない&quot;</code></td></tr><tr><th>indexed_products</th><td><code>3244</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;4abe2ee(コンテンツルートを DAZ Studio から取る)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(@poser-gap を解決。ルートの情報源を CMS から DAZ Studio に変更)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>pyn_repo</th><td><code>&quot;https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)&quot;</code></td></tr><tr><th>resume_entry_point</th><td><code>&quot;@readme-start を読む → @next-steps の 1 番から&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;DAZ Studio(CMS PostgreSQL)起動中なら 63 passed。停止中は test_api.py が 7 failed / 9 errors&quot;</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>canonical</th><td><code>&quot;このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない&quot;</code></td></tr><tr><th>embedding_model_note</th><td><code>&quot;BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯&quot;</code></td></tr><tr><th>indexed_products</th><td><code>3244</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;aace1c8(bge-m3 に合わせて閾値を作り直し)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(@js-switch を実行。日本語検索が動くようになった)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>pyn_repo</th><td><code>&quot;https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)&quot;</code></td></tr><tr><th>resume_entry_point</th><td><code>&quot;@readme-start を読む → @next-steps の 1 番から&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;DAZ Studio(CMS PostgreSQL)起動中なら 63 passed。停止中は test_api.py が 7 failed / 9 errors&quot;</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><p>この文書は <code>Handover.html</code> を PYN(<code>.pyn</code>)へ書き換えたものです。節見出しはすべてノードになっており、HTML の <code>id</code> 属性がそのままノード ID になっています(<code>#state</code> → <code>state</code> など)。</p>
 <p>書き換えは <code>python -m pyn patch Handover.pyn --ops ops.json</code> が安全です(ID 宛なので行番号がずれても当たり、失敗時は文書が変更されません)。<code>#</code> コメントは作業メモ扱いで、射影を再生成すると消えます。</p></div>
 </section>
@@ -116,8 +116,8 @@ a{color:var(--accent)}
 </header>
 <div class="prose"><p>Smart Content にしか対応していなかったインデックス処理を、Content Library ペインにしか現れないコンテンツまで拾えるように拡張した作業の記録。この本体部分は実装・検証・push まで完了している。</p>
 <p>追記の経緯:</p>
-<ul><li>2026-08-25 — <a class="ref" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a>(コンテンツルートの棚卸し。調査のみ、コード変更なし)</li><li>2026-08-27 — 引継ぎ文書を PYN 化(<a class="ref" href="#doc-format">この引継ぎ文書の扱い(PYN)</a>)し、日本語の自由文検索に向けて埋め込みモデルを差し替え可能にした(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)。<strong>切り替えそのものは未実行</strong>(<a class="ref" href="#js-switch">切り替え手順(未実行)</a>)</li><li>2026-08-27(2 回目) — <a class="ref" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a> を CMS 接続下で切り分け、原因を確定。コード側の欠陥を修正した(<a class="ref" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a>)。残りは利用者側のルート追加操作</li></ul></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a><a class="chip" href="#doc-format">この引継ぎ文書の扱い(PYN)</a><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a><a class="chip" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a></div>
+<ul><li>2026-08-25 — <a class="ref" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a>(コンテンツルートの棚卸し。調査のみ、コード変更なし)</li><li>2026-08-27 — 引継ぎ文書を PYN 化(<a class="ref" href="#doc-format">この引継ぎ文書の扱い(PYN)</a>)し、日本語の自由文検索に向けて埋め込みモデルを差し替え可能にした(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)。<strong>切り替えそのものは未実行</strong>(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a>)</li><li>2026-08-27(2 回目) — <a class="ref" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a> を CMS 接続下で切り分け、原因を確定。コード側の欠陥を修正した(<a class="ref" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a>)。残りは利用者側のルート追加操作</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#roots">コンテンツルートの棚卸し(2026-08-25 追記)</a><a class="chip" href="#doc-format">この引継ぎ文書の扱い(PYN)</a><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a><a class="chip" href="#poser-fix">Runtime/Libraries の位置決め打ちを修正(2026-08-27)</a></div>
 </section>
 <section class="node node--section depth-0" id="readme-start">
 <header class="node__head">
@@ -129,11 +129,12 @@ a{color:var(--accent)}
 git status                                   # feature/content-library-indexing / clean のはず
 .venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
 make dev-server                              # http://localhost:8000 に 3,244 製品</code></pre>
-<p><strong>いま何をするかは <a class="ref" href="#next-steps">次の一手(2026-08-27 時点)</a> の 1 番。</strong> 日本語検索のためのコード側対応は済んでいて(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)、残っているのは <strong>モデルのダウンロードと再埋め込みという実行作業だけ</strong>(<a class="ref" href="#js-switch">切り替え手順(未実行)</a>)。回線と CPU 時間を使うので、意図的に未実行のまま残してある。</p>
-<p><strong><a class="ref" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a> は 2026-08-27 に解決した。</strong> 併せてコンテンツルートの情報源が CMS から DAZ Studio 本体に変わっている(<a class="ref" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a>)。走査の対象が変わる変更なので、ルート周りで挙動を疑うときはまずそこを読むこと。</p>
-<div class="table-wrap"><table><thead><tr><th>やりたいこと</th><th>DAZ Studio</th><th>回線</th></tr></thead><tbody><tr><td>日本語検索の切り替え(<a class="ref" href="#js-switch">切り替え手順(未実行)</a>)</td><td>不要</td><td>約 2.2GB</td></tr><tr><td>コンテンツ追加後の再走査</td><td><strong>必須</strong>(ルートを引くため)</td><td>不要</td></tr><tr><td>テストを全部通す</td><td><strong>必須</strong></td><td>不要</td></tr></tbody></table></div>
-<p>DAZ Studio が停止していても走査自体は動くが、ルートは CMS 側だけにフォールバックするので Poser ライブラリが対象から外れる。<code>tests/test_api.py</code> が落ちるのも DAZ Studio 停止が理由で、起動していれば 63 passed。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#next-steps">次の一手(2026-08-27 時点)</a><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a><a class="chip" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a></div>
+<p><strong>2026-08-27 に日本語検索が動くようになった(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a>)。</strong> 埋め込みモデルは <code>BAAI/bge-m3</code> に切り替え済みで、「ロングヘアの女性キャラ」のような日本語の自由文がそのまま引ける。旧モデルのベクトルは <code>chroma_db.bge-large-en-v1.5.bak/</code> に退避してあるので戻すこともできる。</p>
+<p><strong>類似度の絶対値がモデルごとに違う点に注意。</strong> bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は <code>Any / 40%+ / 45%+ / 50%+ / 60%+</code> に作り直してある(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>)。過去の文書にある「50%+ で 3,236 件」といった目安は bge-large-en-v1.5 時代のもので、いまは当てはまらない。</p>
+<p><strong>いま何をするかは <a class="ref" href="#next-steps">次の一手(2026-08-27 時点)</a> の 1 番。</strong> ただし 1 番は「判断」であって作業ではない。手を動かす前に、何を良しとするかを決める必要がある。</p>
+<div class="table-wrap"><table><thead><tr><th>やりたいこと</th><th>DAZ Studio</th><th>備考</th></tr></thead><tbody><tr><td>検索の品質を測る</td><td>不要</td><td><code>python check_search_quality.py</code>(サーバ起動が要る)</td></tr><tr><td>コンテンツ追加後の再走査</td><td><strong>必須</strong></td><td>ルートを DAZ Studio から引くため(<a class="ref" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a>)</td></tr><tr><td>テストを全部通す</td><td><strong>必須</strong></td><td>起動していれば 63 passed</td></tr></tbody></table></div>
+<p><code>ui/src</code> の submodule は<strong>もう取得できない</strong>(upstream のリポジトリが消えた)。UI を変えるときは <code>ui/dist</code> を直接パッチする。手順は <a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a><a class="chip" href="#next-steps">次の一手(2026-08-27 時点)</a><a class="chip" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a></div>
 </section>
 <section class="node node--section depth-0" id="state">
 <header class="node__head">
@@ -141,10 +142,10 @@ make dev-server                              # http://localhost:8000 に 3,244 �
 <h2 class="node__title">現在の状態</h2>
 <a class="node__id" href="#state">state</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>16</code></td></tr><tr><th>embedding_model</th><td><code>&quot;BAAI/bge-large-en-v1.5(差し替え可能だが未切替)&quot;</code></td></tr><tr><th>indexed</th><td><code>3244</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1624</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1581</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;63 passed(DAZ Studio 起動時)&quot;</code></td></tr></tbody></table></div>
-<div class="prose"><div class="table-wrap"><table><thead><tr><th>指標</th><th>値</th><th>補足</th></tr></thead><tbody><tr><td>インデックス済み</td><td>3,244</td><td>作業前 1,620</td></tr><tr><td>新規に見えた製品</td><td>1,624</td><td>cms-local 43 / filesystem 1,581</td></tr><tr><td>ブランチのコミット</td><td>16</td><td>すべて fork に push 済み</td></tr><tr><td>テスト</td><td>63 passed</td><td>DAZ Studio 停止中は <code>test_api.py</code> が 7 failed / 9 errors(<a class="ref" href="#resume">再開手順</a> の 2)</td></tr><tr><td>埋め込みモデル</td><td><code>BAAI/bge-large-en-v1.5</code></td><td>差し替え可能になったが<strong>まだ英語専用のまま</strong>(<a class="ref" href="#js-switch">切り替え手順(未実行)</a> 未実行)</td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>20</code></td></tr><tr><th>embedding_model</th><td><code>&quot;BAAI/bge-m3(2026-08-27 に切替済み。旧モデルのベクトルは .bak に退避)&quot;</code></td></tr><tr><th>indexed</th><td><code>3244</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1624</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1581</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;63 passed(DAZ Studio 起動時)&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th>指標</th><th>値</th><th>補足</th></tr></thead><tbody><tr><td>インデックス済み</td><td>3,244</td><td>作業前 1,620</td></tr><tr><td>新規に見えた製品</td><td>1,624</td><td>cms-local 43 / filesystem 1,581</td></tr><tr><td>ブランチのコミット</td><td>16</td><td>すべて fork に push 済み</td></tr><tr><td>テスト</td><td>63 passed</td><td>DAZ Studio 停止中は <code>test_api.py</code> が 7 failed / 9 errors(<a class="ref" href="#resume">再開手順</a> の 2)</td></tr><tr><td>埋め込みモデル</td><td><code>BAAI/bge-large-en-v1.5</code></td><td>差し替え可能になったが<strong>まだ英語専用のまま</strong>(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a> 未実行)</td></tr></tbody></table></div>
 <p>作業ツリーはクリーン、stash なし。UI は一切改造していない(理由は <a class="ref" href="#design">何を作ったか</a>)。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#resume">再開手順</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#design">何を作ったか</a></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#resume">再開手順</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#design">何を作ったか</a></div>
 </section>
 <section class="node node--section depth-0" id="roots">
 <header class="node__head">
@@ -388,8 +389,8 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <h2 class="node__title">次の一手(2026-08-27 時点)</h2>
 <a class="node__id" href="#next-steps">next-steps</a>
 </header>
-<div class="prose"><ol><li><strong>日本語検索を実際に有効化する。</strong> コード側は済んでいる(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)。残るはモデル DL・ChromaDB 作り直し・3,244 件の再埋め込みで、手順は <a class="ref" href="#js-switch">切り替え手順(未実行)</a>。DAZ Studio は不要、回線と CPU 時間だけ要る。切り替え前に <code>python check_search_quality.py --json &gt; before.json</code> を取っておくこと</li><li><strong><code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。</strong> <a class="ref" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a> とは無関係と判明したが、1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる、という性質自体は残っている。実害が出ているかは未測定</li><li><strong>既存 fs 製品の <code>content_dirs</code> は差分実行では更新されない。</strong> コンテンツを別ルートへ追加・移動したときは <code>python vab.py load --phase scan --all</code> が要る(<code>--force</code> と違い SQLite も ChromaDB も消えない)。毎回これで良いのではないか、という設計判断は保留のまま</li><li><strong><code>embedding_text</code> の更新も差分実行では起きない。</strong> 上記 <code>--all</code> で <code>content_dirs</code> が変わっても再埋め込みは走らないので、ChromaDB 側は古いテキストのまま。実害は小さいと判断して 2026-08-27 は再埋め込みしていない</li></ol></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(未実行)</a><a class="chip" href="#poser-gap">解決済み:Poser ライブラリが 1 製品しか拾えていない</a></div>
+<div class="prose"><ol><li><strong>和室の背景の後退を許容するか判断する。</strong> bge-m3 は日本固有の語彙(和室、床の間など)が弱く、切り替え前に 1 位だった <code>Japanese Onsen</code> が 5 位に落ちた。他の日本語クエリは明確に改善しているので全体としては前進だが、気になるなら日本語特化モデル(<code>intfloat/multilingual-e5-large</code> など)の比較を検討する。E5 系は <code>query: </code> / <code>passage: </code> 接頭辞が要るが、その規約は <code>_MODEL_CONVENTIONS</code> に実装済み(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)</li><li><strong><code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。</strong> 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定</li><li><strong>既存 fs 製品の <code>content_dirs</code> は差分実行では更新されない。</strong> コンテンツを別ルートへ追加・移動したときは <code>python vab.py load --phase scan --all</code> が要る(<code>--force</code> と違い SQLite も ChromaDB も消えない)</li><li><strong><code>chroma_db.bge-large-en-v1.5.bak/</code> を残すか捨てるか。</strong> 31MB。bge-m3 で確定なら消してよい</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a></div>
 </section>
 <section class="node node--idea depth-1" id="japanese-search">
 <header class="node__head">
@@ -397,7 +398,7 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <h2 class="node__title">今後やりたいこと:日本語の自由文で検索する</h2>
 <a class="node__id" href="#japanese-search">japanese-search</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>blocker</th><td><code>&quot;埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用&quot;</code></td></tr><tr><th>chosen</th><td><code>&quot;案 1(BAAI/bge-m3 へ差し替え)&quot;</code></td></tr><tr><th>status</th><td><code>code_ready_model_swap_pending</code></td></tr><tr><th>ui_change_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>blocker</th><td><code>&quot;埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用&quot;</code></td></tr><tr><th>chosen</th><td><code>&quot;案 1(BAAI/bge-m3 へ差し替え)&quot;</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>ui_change_needed</th><td><code>&quot;結果的に必要だった(閾値の目盛り。@ui-thresholds)&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><p>思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。</p>
 <p><strong>障害は埋め込みモデル。</strong> <code>BAAI/bge-large-en-v1.5</code> は英語専用で、日本語クエリはトークナイズこそ通るが意味ベクトルとして成立しない。加えて <code>embedding_text</code> 側も英語(ストア製品は製品名・説明、filesystem 製品はパス由来の英単語)なので、日本語で引くには<strong>クロスリンガルに対応したモデルが要る</strong>。</p>
 <p>どちらの案でも <strong>UI の改造は不要</strong>。検索文字列は入力されたままサーバへ送られるので、日本語対応はサーバ側だけで完結する。<code>ui/src</code> が未チェックアウトの submodule という制約に引っかからない。</p></div>
@@ -428,7 +429,7 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <h2 class="node__title">コード側の対応(実装済み・2026-08-27)</h2>
 <a class="node__id" href="#js-impl">js-impl</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>model_downloaded</th><td><code>false</code></td></tr><tr><th>reindexed</th><td><code>false</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>tests_added</th><td><code>11</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>model_downloaded</th><td><code>true</code></td></tr><tr><th>reindexed</th><td><code>true</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>tests_added</th><td><code>11</code></td></tr></tbody></table></div>
 <div class="prose"><p><a class="ref" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a> を実行できるようにするための修正。<strong>モデル本体のダウンロードと再埋め込みはまだ行っていない</strong>(利用者が実行する)。</p>
 <p>引継ぎ文書に書かれていなかった実際の障害が 2 つあった。どちらも「<code>--model</code> を渡すだけで切り替わる」という前提を崩すもの。</p>
 <ul><li><strong><code>token_type_ids</code> の決め打ち。</strong> <code>generate_embeddings()</code> は ONNX へ 3 入力を固定で渡していたが、<code>bge-m3</code> も <code>multilingual-e5-*</code> も XLM-RoBERTa 系でこの入力を持たない。差し替えた瞬間に <code>InvalidArgument: Invalid Feed Input Name: token_type_ids</code> で落ちる。<code>session.get_inputs()</code> を見て、グラフが宣言した入力だけを渡すようにした</li><li><strong><code>--model</code> が無効だった。</strong> <code>embedding_utils</code> はモデル ID を <em>import 時</em> に読んでいたが、<code>main.py</code> は <code>managers.managers</code> 経由でこのモジュールを import した <em>後</em> に <code>os.environ</code> を書き換えていた。つまりフラグは常に無視されていた。設定解決を遅延(初回使用時)に変更して解消</li></ul>
@@ -440,22 +441,47 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <section class="node node--runbook depth-2" id="js-switch">
 <header class="node__head">
 <span class="badge">runbook</span>
-<h2 class="node__title">切り替え手順(未実行)</h2>
+<h2 class="node__title">切り替え手順(2026-08-27 実行済み)</h2>
 <a class="node__id" href="#js-switch">js-switch</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>download_size</th><td><code>&quot;約 2.2GB&quot;</code></td></tr><tr><th>rescan_needed</th><td><code>false</code></td></tr><tr><th>rescrape_needed</th><td><code>false</code></td></tr></tbody></table></div>
-<div class="prose"><pre><code class="lang-bash">python check_search_quality.py --json &gt; before.json   # 切り替え前の実測を保存
-
-python export_model.py --model BAAI/bge-m3            # → models/bge-m3/
-rd /s /q chroma_db                                    # 旧モデルのベクトルは流用できない</code></pre>
-<p><code>.env</code> の <code>EMBEDDING_MODEL_ID=BAAI/bge-m3</code> を有効化してから:</p>
-<pre><code class="lang-bash">python vab.py load --phase embed                      # SQLite から 3,239 件を再埋め込み
-make dev-server
-python check_search_quality.py --json &gt; after.json     # 日本語クエリを含めて比較</code></pre>
-<p>Web スクレイピングも Content Library 走査も走らない(<code>embedding_text</code> は SQLite に残っているため)。</p>
-<p>見るべき点:</p>
-<ul><li>「和室の背景」「ロングヘアの女性キャラ」で意味のある上位結果が出るか</li><li><code>office</code> / <code>dress</code> / <code>forest</code> の英語検索が劣化していないか</li><li>応答時間。<code>bge-m3</code> は現行より大きいので CPU 推論は遅くなる。埋め込み時間も含めて実測すること</li><li><strong>閾値の目安は作り直しになる。</strong> <a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a> で測った「50%+ で 3,236 件、70%+ で 2 件」は別モデルには引き継げない</li></ul></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>download_size</th><td><code>&quot;約 2.2GB&quot;</code></td></tr><tr><th>embed_seconds</th><td><code>48</code></td></tr><tr><th>executed</th><td><code>2026-08-27</code></td></tr><tr><th>latency_change</th><td><code>&quot;なし(約 2.3〜2.5 秒で前後同じ)&quot;</code></td></tr><tr><th>model_size_mb</th><td><code>2179</code></td></tr><tr><th>rescan_needed</th><td><code>false</code></td></tr><tr><th>rescrape_needed</th><td><code>false</code></td></tr><tr><th>rollback</th><td><code>&quot;chroma_db.bge-large-en-v1.5.bak/ を chroma_db/ に戻し .env をコメントアウト&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><p>2026-08-27 に実行し、<strong>日本語の自由文検索は動くようになった</strong>。所要は実測でモデル DL・ONNX 化が十数分、再埋め込みが 3,244 件で 48 秒。</p>
+<pre><code class="lang-bash">python export_model.py --model BAAI/bge-m3     # → models/bge-m3/ (2,179 MB)
+mv chroma_db chroma_db.bge-large-en-v1.5.bak   # 削除せず退避(戻せるように)
+# .env の EMBEDDING_MODEL_ID=BAAI/bge-m3 を有効化
+python vab.py load --phase embed               # 3,244 件、48 秒</code></pre>
+<p><a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a> で入れた 2 つの修正がここで効いた。ログの <code>model=BAAI/bge-m3 pooling=cls max_length=512 inputs=[&#x27;input_ids&#x27;, &#x27;attention_mask&#x27;]</code> がその証拠で、<strong><code>token_type_ids</code> が入力に無い</strong>。修正前ならこの瞬間に <code>InvalidArgument</code> で落ちていた。</p>
+<p><strong>懸念していた CPU 推論の悪化は起きなかった。</strong> 検索応答は約 2.3〜2.5 秒で切り替え前と同じ。<a class="ref" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a> に書いた「bge-m3 は大きいので遅くなる可能性」は、この規模では顕在化しなかった。</p>
+<p>旧ベクトルは <code>chroma_db.bge-large-en-v1.5.bak/</code>(31MB、gitignore 済み)に残してある。戻すなら <code>.env</code> の <code>EMBEDDING_MODEL_ID</code> をコメントアウトし、このディレクトリを <code>chroma_db/</code> に戻すだけでよい(再埋め込み不要)。</p></div>
+<div class="prose"><p><strong>日本語クエリの上位結果は明確に良くなった。</strong></p>
+<div class="table-wrap"><table><thead><tr><th>クエリ</th><th>切り替え前の 1 位</th><th>切り替え後の 1 位</th></tr></thead><tbody><tr><td>ロングヘアの女性キャラ</td><td>PN Kikyou for Genesis 9</td><td><strong>HM Long Hair V for Genesis 9</strong></td></tr><tr><td>中世の鎧を着た戦士</td><td>CS01: Fighting Poses</td><td><strong>dForce Scarlet Valkyrie Fantasy Armor</strong></td></tr><tr><td>和室の背景</td><td>Japanese Onsen</td><td>Waiting Area Vignette</td></tr></tbody></table></div>
+<p>ロングヘアは上位 5 件すべてがロングヘアのキャラ/ヘア製品、中世の鎧は鎧・武器・戦闘系で揃う。</p>
+<p><strong>和室の背景だけは後退した。</strong> 「室内の背景」までは理解しているが「和室」が効いておらず、切り替え前に 1 位だった <code>Japanese Onsen</code> が 5 位(0.488)に落ちている。上位は Waiting Area Vignette / Dystopian Room Interior / The Lotus Suite / Staircase Vignette。日本固有の語彙は弱い、という限界として残る。</p>
+<p>英語は実用上ほぼ同等。<code>forest</code> の 1 位が <code>My Tree Pack</code> → <code>The Mountains</code> に変わったが <code>My Tree Pack</code> は 2 位(0.492)。</p></div>
+<div class="prose"><p><strong>類似度の絶対値が大きく下がったため、UI の目盛りを作り直した(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>)。</strong></p>
+<div class="table-wrap"><table><thead><tr><th></th><th>bge-large-en-v1.5</th><th>bge-m3</th></tr></thead><tbody><tr><td>上位ヒットのスコア</td><td>0.7 超</td><td>0.46〜0.62</td></tr><tr><td>中央値</td><td>約 0.5</td><td>0.31〜0.39</td></tr><tr><td>実用的に効く帯</td><td>60〜70%</td><td><strong>40〜50%</strong></td></tr></tbody></table></div>
+<p>ベンチ 6 クエリでの実測件数:</p>
+<div class="table-wrap"><table><thead><tr><th>クエリ</th><th>35%</th><th>40%</th><th>45%</th><th>50%</th><th>55%</th><th>60%</th></tr></thead><tbody><tr><td>office</td><td>2743</td><td>451</td><td>26</td><td>7</td><td>1</td><td>0</td></tr><tr><td>dress</td><td>3175</td><td>2123</td><td>632</td><td>172</td><td>13</td><td>0</td></tr><tr><td>forest</td><td>344</td><td>46</td><td>13</td><td>0</td><td>0</td><td>0</td></tr><tr><td>和室の背景</td><td>1859</td><td>319</td><td>44</td><td>1</td><td>0</td><td>0</td></tr><tr><td>ロングヘアの女性キャラ</td><td>2828</td><td>1383</td><td>312</td><td>77</td><td>12</td><td>2</td></tr><tr><td>中世の鎧を着た戦士</td><td>683</td><td>105</td><td>6</td><td>0</td><td>0</td><td>0</td></tr></tbody></table></div>
+<p><a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a> に書いた「50%+ で 3,236 件、70%+ で 2 件」という目安は、予告どおり完全に無効になった。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
+</section>
+<section class="node node--task depth-2" id="ui-thresholds">
+<header class="node__head">
+<span class="badge">task</span>
+<h2 class="node__title">UI の Min match を作り直した(2026-08-27)</h2>
+<a class="node__id" href="#ui-thresholds">ui-thresholds</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>&quot;953c59d, aace1c8&quot;</code></td></tr><tr><th>ladder</th><td><code>&quot;Any / 40%+ / 45%+ / 50%+ / 60%+&quot;</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>ui_src_available</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="prose"><p>検索の Min match は <code>Any / 50%+ / 70%+ / 90%+</code> の 4 段だった。3,244 製品では下 2 段が選択的でなく(office は 50% で 3,236 件、70% で 2 件)、実用的な帯がまるごと選べなかった。</p>
+<p><strong><code>ui/src</code> の submodule はもう取得できない。</strong> upstream の UI リポジトリが消えている。</p>
+<pre><code>remote: Repository not found.
+fatal: repository &#x27;https://github.com/bluemoonfoundry/bmf-daz-content-browser-ui.git/&#x27; not found</code></pre>
+<p>したがって「submodule を取得すれば UI を直せる」という <a class="ref" href="#limits">既知の限界</a> の記述は<strong>もう成り立たない</strong>。ビルド済み <code>ui/dist</code> を直接パッチするのが唯一の手段になる。</p>
+<p>対象は minify 済みバンドル内の 1 配列だけなので、実務上は難しくない。</p>
+<pre><code class="lang-js">jr=[{label:`Any`,value:0},{label:`40%+`,value:.4},{label:`45%+`,value:.45},{label:`50%+`,value:.5},{label:`60%+`,value:.6}]</code></pre>
+<p><strong>バンドルのファイル名も必ず付け替えること。</strong> Vite はコンテンツハッシュで命名するので、中身だけ変えて名前を据え置くとブラウザのキャッシュが古い方を出し続ける。<code>ui/dist/index.html</code> の <code>&lt;script src&gt;</code> も併せて書き換える。サーバ再起動は不要(静的ファイルは都度ディスクから配信)。</p>
+<p>目盛りの値そのものはモデル依存。bge-large-en-v1.5 に戻すなら 60/70/90 の側が再び正しくなる(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a> の表)。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#limits">既知の限界</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
 </section>
 </section>
 <section class="node node--section depth-1" id="pending">
@@ -473,7 +499,8 @@ python check_search_quality.py --json &gt; after.json     # 日本語クエリ�
 <h2 class="node__title">既知の限界</h2>
 <a class="node__id" href="#limits">limits</a>
 </header>
-<div class="prose"><ul><li><strong>グルーピングの過剰マージが 4 件。</strong> ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>(既定 5)で調整できる</li><li><strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong> 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える</li><li><strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong> <code>ui/src</code> が未チェックアウトのため。差分実行(<code>force: false</code>)で動くことは API 経由で確認済み</li><li><strong>UI 自体は未改造。</strong> <code>source</code> は API が返しているので、submodule を取得すれば「Content Library のみ表示」といったフィルタは追加できる</li><li><strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong> 候補プールを 5000 に上げた結果、"office" のような一般語では 3,239 件・1.88MB が返る(0.60 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はプールを更に広げることではなく、サーバ側ページングの導入(<code>ui/src</code> の submodule が要る)</li></ul></div>
+<div class="prose"><ul><li><strong>グルーピングの過剰マージが 4 件。</strong> ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>(既定 5)で調整できる</li><li><strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong> 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える</li><li><strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong> 差分実行(<code>force: false</code>)で動くことは API 経由で確認済み</li><li><strong><code>ui/src</code> の submodule はもう取得できない。</strong> upstream の <code>bmf-daz-content-browser-ui</code> が消えている(<code>Repository not found</code>)。以前ここには「submodule を取得すればフィルタを追加できる」と書いてあったが、<strong>それはできない</strong>。UI を変えるなら <code>ui/dist</code> のバンドルを直接パッチする(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a> に手順)。<code>source</code> は API が返しているので「Content Library のみ表示」のようなフィルタ自体は作れる</li><li><strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong> 候補プールを 5000 に上げた結果、Min match: Any では 3,244 件・1.84MB が返る(約 2.5 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はサーバ側ページングだが、<code>ui/src</code> が失われた以上 UI 側の対応はバンドルのパッチになる</li><li><strong>bge-m3 は日本固有の語彙が弱い。</strong> 「和室」が効かず、<code>Japanese Onsen</code> が 1 位から 5 位に落ちた(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a>)</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
 </section>
 </section>
 <section class="node node--section depth-0" id="resume">
