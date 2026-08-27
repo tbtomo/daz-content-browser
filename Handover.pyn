@@ -11,7 +11,7 @@ meta meta "この文書について":
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
-  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)"
+  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)"
   status: implemented_verified_and_pushed
   test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 97 passed。停止中は test_api.py が 7 failed / 9 errors"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
@@ -205,6 +205,7 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     daz_format_is_freeform: true
     daz_studio_sensitive: true
     found_by: "利用者の実機確認(2026-08-27)"
+    resolved: 2026-08-27
     vab_sensitive: false
     """
     **DAZ Studio の Poser Formats は、製品フォルダ単位で登録する。** 親ディレクトリを 1 本足しても DAZ Studio 側には何も現れない。
@@ -265,6 +266,21 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     **入れ子の 146 件はどう登録しても DAZ Studio からは見えない。** アーカイブのラッパーフォルダ越しに `Runtime\Libraries` があるためで、@poser-fix のおかげで **VAB の方が DAZ Studio より広く見えている**数少ない箇所。
 
     **VAB のインデックスはこの区分と無関係。** ファイルを直接走査するので、Poser Formats に何が登録されていようと拾う件数は変わらない(@poser-roots の実測表)。
+    """
+    """
+    **2026-08-27 中に解消済み。** `D:\DAZ 3D\My DAZ 3D Library` と `D:\DAZ 3D\Studio\My Library` を Poser Formats に追加し、DAZ Studio が実際に列挙できることを Script Server 経由で確認した。
+
+    ```
+    D:/DAZ 3D/My DAZ 3D Library  → !DAZ, camera, Character, Hair, Hand, light, Materials, Pose, props, scene
+    D:/DAZ 3D/Studio/My Library  → Camera, character, hand, Materials, Pose, Props, Textures
+    D:/Poser/My Poser Library    → Runtime/Libraries が存在しない → 種別 0
+    ```
+
+    最後の行がこの節の説明そのものの裏付けになっている。親フォルダを登録しても何も出ないのは、列挙すべき `Runtime/Libraries` がそこに無いから。
+
+    現在の Poser Formats は 7 本(`My Poser Library` とその子 4 本、DAZ ライブラリ 2 本)。親エントリは冗長だが無害。
+
+    **VAB の走査対象は変わらない。** `resolve_content_roots()` の和集合は 12 件になるが、`dedupe_roots()` 後は従来どおり 4 本(`My DAZ 3D Library` / `My Poser Library` / `Studio\My Library` / OneDrive)。DAZ ライブラリ 2 本は元から DAZ Studio Formats と CMS 経由で走査対象だった。
     """
 
 section problem "何が問題だったか":
