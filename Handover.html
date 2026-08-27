@@ -135,10 +135,10 @@ make dev-server                              # http://localhost:8000 に 3,244 �
 <p><strong>モデルは 2 つ要る。</strong> どちらも <code>models/</code> に置き、<code>git</code> には入らない。クローンし直した直後は両方エクスポートすること。</p>
 <pre><code class="lang-bash">python export_model.py --model BAAI/bge-m3     # 埋め込み 2,179MB(必須)
 python export_translation_model.py             # 翻訳 361MB(任意。無ければ日本語が弱くなるだけ)</code></pre>
-<p><strong>類似度の絶対値はモデルごとに違う。</strong> bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は <code>Any / 40%+ / 45%+ / 50%+ / 60%+</code>(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>)。過去の文書にある「50%+ で 3,236 件」は bge-large-en-v1.5 時代の値で、いまは当てはまらない。</p>
+<p><strong>類似度の絶対値はモデルごとに違う。</strong> bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は <code>Any / 40%+ / 45%+ / 50%+ / 60%+</code>(<a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a>)。過去の文書にある「50%+ で 3,236 件」は bge-large-en-v1.5 時代の値で、いまは当てはまらない。</p>
 <div class="table-wrap"><table><thead><tr><th>やりたいこと</th><th>DAZ Studio</th><th>備考</th></tr></thead><tbody><tr><td>検索の品質を測る</td><td>不要</td><td><code>check_search_quality.py</code> と <code>check_crosslingual.py</code>(要サーバ起動)</td></tr><tr><td>コンテンツ追加後の再走査</td><td><strong>必須</strong></td><td>ルートを DAZ Studio から引くため(<a class="ref" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a>)</td></tr><tr><td>テストを全部通す</td><td><strong>必須</strong></td><td>起動していれば 97 passed</td></tr></tbody></table></div>
-<p><code>ui/src</code> の submodule は<strong>もう取得できない</strong>(upstream のリポジトリが消えた)。UI を変えるときは <code>ui/dist</code> を直接パッチする。手順は <a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#jt-impl">実装(2026-08-27)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a><a class="chip" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a></div>
+<p><code>ui/src</code> の submodule は<strong>もう取得できない</strong>(upstream のリポジトリが消えた)。UI を変えるときは <code>ui/dist</code> を直接パッチする。手順は <a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a>。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#jt-impl">実装(2026-08-27)</a><a class="chip" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a><a class="chip" href="#roots-source">tblBasePath は設定されたコンテンツディレクトリではなかった(2026-08-27 修正)</a></div>
 </section>
 <section class="node node--section depth-0" id="state">
 <header class="node__head">
@@ -433,8 +433,8 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <h2 class="node__title">次の一手(2026-08-27 時点)</h2>
 <a class="node__id" href="#next-steps">next-steps</a>
 </header>
-<div class="prose"><ol><li><strong><code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。</strong> 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定</li><li><strong>UI に <code>searched_as</code> を出すか。</strong> <code>/api/v1/search</code> は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出すなら <code>ui/dist</code> のバンドルを直接パッチする(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a> に手順)。翻訳が的外れだったときに利用者が気付けるようになる</li><li><strong>既存 fs 製品の <code>content_dirs</code> は差分実行では更新されない。</strong> コンテンツを別ルートへ追加・移動したときは <code>python vab.py load --phase scan --all</code> が要る</li><li><strong>退避したベクトルとモデルを残すか捨てるか。</strong> <code>chroma_db.bge-large-en-v1.5.bak/</code>(31MB)、<code>chroma_db.multilingual-e5-large.bak/</code>(32MB)、<code>models/bge-large-en-v1.5/</code>(1.3GB)、<code>models/multilingual-e5-large/</code>(2.1GB)。bge-m3 で確定なら消してよい</li><li><strong>「中世の鎧を着た戦士」は 6/10 止まり。</strong> 翻訳は <code>warrior wearing medieval armor</code> と正しく、英語で引いても上位が割れる。カタログ側に中世ヨーロッパ鎧が乏しいためで、翻訳の問題ではない</li></ol></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a></div>
+<div class="prose"><ol><li><strong><code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。</strong> 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定</li><li><strong>UI に <code>searched_as</code> を出すか。</strong> <code>/api/v1/search</code> は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出すなら <code>ui/dist</code> のバンドルを直接パッチする(<a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a> に手順)。翻訳が的外れだったときに利用者が気付けるようになる</li><li><strong>既存 fs 製品の <code>content_dirs</code> は差分実行では更新されない。</strong> コンテンツを別ルートへ追加・移動したときは <code>python vab.py load --phase scan --all</code> が要る</li><li><strong>退避したベクトルとモデルを残すか捨てるか。</strong> <code>chroma_db.bge-large-en-v1.5.bak/</code>(31MB)、<code>chroma_db.multilingual-e5-large.bak/</code>(32MB)、<code>models/bge-large-en-v1.5/</code>(1.3GB)、<code>models/multilingual-e5-large/</code>(2.1GB)。bge-m3 で確定なら消してよい</li><li><strong>「中世の鎧を着た戦士」は 6/10 止まり。</strong> 翻訳は <code>warrior wearing medieval armor</code> と正しく、英語で引いても上位が割れる。カタログ側に中世ヨーロッパ鎧が乏しいためで、翻訳の問題ではない</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a></div>
 </section>
 <section class="node node--idea depth-1" id="japanese-search">
 <header class="node__head">
@@ -475,7 +475,7 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <div class="table-wrap"><table class="attrs"><tbody><tr><th>added_dependency</th><td><code>&quot;sentencepiece のみ&quot;</code></td></tr><tr><th>commit</th><td><code>b037a17</code></td></tr><tr><th>english_impact</th><td><code>&quot;なし(件数まで同一)&quot;</code></td></tr><tr><th>model</th><td><code>staka/fugumt-ja-en</code></td></tr><tr><th>model_size_mb</th><td><code>361</code></td></tr><tr><th>overlap_after</th><td><code>9.0/10</code></td></tr><tr><th>overlap_before</th><td><code>6.17/10</code></td></tr><tr><th>status</th><td><code>done</code></td></tr></tbody></table></div>
 <div class="prose"><p>2026-08-27 に実装。<strong><a class="ref" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a> の平均一致が 6.17/10 → 9.0/10 になった。</strong></p>
 <div class="table-wrap"><table><thead><tr><th>日本語クエリ</th><th>翻訳前</th><th>翻訳後</th><th>翻訳後の 1 位</th></tr></thead><tbody><tr><td>和室の背景</td><td>3/10</td><td><strong>10/10</strong></td><td><strong>Japanese Onsen</strong>(以前は 5 位)</td></tr><tr><td>森の風景</td><td>7/10</td><td><strong>10/10</strong></td><td>My Tree Pack</td></tr><tr><td>学校の教室</td><td>9/10</td><td><strong>10/10</strong></td><td>Japanese Neat Classroom</td></tr><tr><td>ロングヘアの女性キャラ</td><td>8/10</td><td><strong>10/10</strong></td><td>HM Long Hair V for Genesis 9</td></tr><tr><td>和室</td><td>6/10</td><td><strong>8/10</strong></td><td>HY ClassRoom</td></tr><tr><td>中世の鎧を着た戦士</td><td>4/10</td><td><strong>6/10</strong></td><td>dForce Scarlet Valkyrie Fantasy Armor</td></tr></tbody></table></div>
-<p><strong>英語検索は 1 件も変わらない。</strong> office 50%+ が 7 件、dress が 172 件、forest が 0 件で切り替え前と完全一致。応答時間も 2.3〜2.5 秒のままで、翻訳の約 0.05 秒は埋もれる。<strong>UI の閾値(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>)もそのままでよい</strong> — 日本語クエリのスコアが英語と同じ帯に乗るため。</p>
+<p><strong>英語検索は 1 件も変わらない。</strong> office 50%+ が 7 件、dress が 172 件、forest が 0 件で切り替え前と完全一致。応答時間も 2.3〜2.5 秒のままで、翻訳の約 0.05 秒は埋もれる。<strong>UI の閾値(<a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a>)もそのままでよい</strong> — 日本語クエリのスコアが英語と同じ帯に乗るため。</p>
 <p>実際の翻訳結果:</p>
 <pre><code>和室の背景          -&gt; Background of the Japanese-style room
 和室                -&gt; Japanese-style room
@@ -491,7 +491,7 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <ul><li><code>transformers.generate()</code> は torch 依存なので使えず、<strong>greedy デコードを手書き</strong>した。encoder を 1 回、decoder を 1 トークンずつ回して argmax。モデルの config は 12 beam を指定しているが、検索クエリは短い名詞句なので beam search の旨味は小さい</li><li><strong>Marian には fast tokenizer が無い。</strong> <code>embedding_utils</code> は <code>tokenizers.Tokenizer.from_file(tokenizer.json)</code> で済むが、Marian は <code>tokenizer.json</code> を持たず <code>source.spm</code> / <code>target.spm</code> を積む。そこで <strong>sentencepiece + <code>vocab.json</code> で Marian のトークナイズを再実装</strong>した(<code>MarianPieces</code>)。<code>MarianTokenizer</code> と ID 列が完全一致することはテストで固定してある</li><li>追加した実行時依存は <strong>sentencepiece のみ</strong>(小さく、torch を引かない)。<code>pyproject.toml</code> の <code>local_llm</code> と <code>vab.spec</code> の同梱リストに追加済み</li></ul>
 <p><strong>② 常に任意機能であること。</strong> モデル未エクスポートでも、翻訳が失敗しても、<strong>元のクエリをそのまま使う</strong>。翻訳器の欠落は検索品質を下げるだけで、検索を失敗させてはならない。日本語文字を含まないクエリはモデルに触れもしないので、英語利用者は 361MB も 0.05 秒も払わない。</p>
 <p>設定は <code>.env</code> の <code>QUERY_TRANSLATION</code>(<code>auto</code> / <code>on</code> / <code>off</code>、既定 <code>auto</code> = モデルがあれば有効)、<code>QUERY_TRANSLATION_MODEL_ID</code>、<code>QUERY_TRANSLATION_MODEL_DIR</code>。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a><a class="chip" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a></div>
 </section>
 </section>
 <section class="node node--task depth-2" id="js-impl">
@@ -529,20 +529,20 @@ python vab.py load --phase embed               # 3,244 件、48 秒</code></pre>
 <p>ロングヘアは上位 5 件すべてがロングヘアのキャラ/ヘア製品、中世の鎧は鎧・武器・戦闘系で揃う。</p>
 <p><strong>和室の背景だけは後退した。</strong> 「室内の背景」までは理解しているが「和室」が効いておらず、切り替え前に 1 位だった <code>Japanese Onsen</code> が 5 位(0.488)に落ちている。上位は Waiting Area Vignette / Dystopian Room Interior / The Lotus Suite / Staircase Vignette。日本固有の語彙は弱い、という限界として残る。</p>
 <p>英語は実用上ほぼ同等。<code>forest</code> の 1 位が <code>My Tree Pack</code> → <code>The Mountains</code> に変わったが <code>My Tree Pack</code> は 2 位(0.492)。</p></div>
-<div class="prose"><p><strong>類似度の絶対値が大きく下がったため、UI の目盛りを作り直した(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a>)。</strong></p>
+<div class="prose"><p><strong>類似度の絶対値が大きく下がったため、UI の目盛りを作り直した(<a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a>)。</strong></p>
 <div class="table-wrap"><table><thead><tr><th></th><th>bge-large-en-v1.5</th><th>bge-m3</th></tr></thead><tbody><tr><td>上位ヒットのスコア</td><td>0.7 超</td><td>0.46〜0.62</td></tr><tr><td>中央値</td><td>約 0.5</td><td>0.31〜0.39</td></tr><tr><td>実用的に効く帯</td><td>60〜70%</td><td><strong>40〜50%</strong></td></tr></tbody></table></div>
 <p>ベンチ 6 クエリでの実測件数:</p>
 <div class="table-wrap"><table><thead><tr><th>クエリ</th><th>35%</th><th>40%</th><th>45%</th><th>50%</th><th>55%</th><th>60%</th></tr></thead><tbody><tr><td>office</td><td>2743</td><td>451</td><td>26</td><td>7</td><td>1</td><td>0</td></tr><tr><td>dress</td><td>3175</td><td>2123</td><td>632</td><td>172</td><td>13</td><td>0</td></tr><tr><td>forest</td><td>344</td><td>46</td><td>13</td><td>0</td><td>0</td><td>0</td></tr><tr><td>和室の背景</td><td>1859</td><td>319</td><td>44</td><td>1</td><td>0</td><td>0</td></tr><tr><td>ロングヘアの女性キャラ</td><td>2828</td><td>1383</td><td>312</td><td>77</td><td>12</td><td>2</td></tr><tr><td>中世の鎧を着た戦士</td><td>683</td><td>105</td><td>6</td><td>0</td><td>0</td><td>0</td></tr></tbody></table></div>
 <p><a class="ref" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a> に書いた「50%+ で 3,236 件、70%+ で 2 件」という目安は、予告どおり完全に無効になった。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a><a class="chip" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a><a class="chip" href="#bug-search-cap">検索結果が常に 500 件で頭打ちになっていた</a></div>
 </section>
 <section class="node node--task depth-2" id="ui-thresholds">
 <header class="node__head">
 <span class="badge">task</span>
-<h2 class="node__title">UI の Min match を作り直した(2026-08-27)</h2>
+<h2 class="node__title">UI のパッチ(Min match の目盛りと最小文字数)</h2>
 <a class="node__id" href="#ui-thresholds">ui-thresholds</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>&quot;953c59d, aace1c8&quot;</code></td></tr><tr><th>ladder</th><td><code>&quot;Any / 40%+ / 45%+ / 50%+ / 60%+&quot;</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>ui_src_available</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>&quot;953c59d, aace1c8, 7ff790a&quot;</code></td></tr><tr><th>ladder</th><td><code>&quot;Any / 40%+ / 45%+ / 50%+ / 60%+&quot;</code></td></tr><tr><th>status</th><td><code>done</code></td></tr><tr><th>ui_src_available</th><td><code>false</code></td></tr></tbody></table></div>
 <div class="prose"><p>検索の Min match は <code>Any / 50%+ / 70%+ / 90%+</code> の 4 段だった。3,244 製品では下 2 段が選択的でなく(office は 50% で 3,236 件、70% で 2 件)、実用的な帯がまるごと選べなかった。</p>
 <p><strong><code>ui/src</code> の submodule はもう取得できない。</strong> upstream の UI リポジトリが消えている。</p>
 <pre><code>remote: Repository not found.
@@ -552,7 +552,14 @@ fatal: repository &#x27;https://github.com/bluemoonfoundry/bmf-daz-content-brows
 <pre><code class="lang-js">jr=[{label:`Any`,value:0},{label:`40%+`,value:.4},{label:`45%+`,value:.45},{label:`50%+`,value:.5},{label:`60%+`,value:.6}]</code></pre>
 <p><strong>バンドルのファイル名も必ず付け替えること。</strong> Vite はコンテンツハッシュで命名するので、中身だけ変えて名前を据え置くとブラウザのキャッシュが古い方を出し続ける。<code>ui/dist/index.html</code> の <code>&lt;script src&gt;</code> も併せて書き換える。サーバ再起動は不要(静的ファイルは都度ディスクから配信)。</p>
 <p>目盛りの値そのものはモデル依存。bge-large-en-v1.5 に戻すなら 60/70/90 の側が再び正しくなる(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a> の表)。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#limits">既知の限界</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
+<div class="prose"><p><strong>最小文字数の 3 文字制限(2026-08-27 修正)。</strong> 「和室」で検索しても <code>Type at least 3 characters to search.</code> が出るだけで、リクエストすら飛んでいなかった。ラテン文字なら 2 文字はほぼ無意味なので妥当な下限だが、日本語の 2 文字は完全な語(和室・着物・背景・教室)。</p>
+<p>バンドル内の 2 箇所が対象。</p>
+<pre><code class="lang-js">enabled:t&amp;&amp;e.trim().length&gt;2,        // リクエストのゲート
+children:t&amp;&amp;e.trim().length&lt;=2?      // 「3文字以上入力してください」の表示条件</code></pre>
+<p>かな・カタカナ・漢字を含むときは長さに関係なく通すようにした(判定文字クラスは <code>src/query_translation.py</code> の <code>_JAPANESE_RE</code> と同じ)。ラテン側の下限は据え置きなので <code>ab</code> や <code>G8</code> は従来どおり 3 文字目を待つ。</p>
+<p>ブラウザで確認済み。「和室」で 3,244 件が返り、上位は HY ClassRoom 60% / Japanese Restaurant 59% / Japanese Onsen 59% / Japanese Neat Classroom 59% / XI Japanese Bath 58%。</p>
+<p><strong>この種の「UI 側で握り潰されている」不具合は、サーバ側をいくら測っても見つからない。</strong> <a class="ref" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a> も <code>check_search_quality.py</code> も API を直接叩くので、UI のゲートは素通りする。日本語まわりで「出ない」と言われたら、まず UI が投げているかを疑うこと。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#limits">既知の限界</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a></div>
 </section>
 <section class="node node--task depth-2" id="e5-trial">
 <header class="node__head">
@@ -572,9 +579,9 @@ fatal: repository &#x27;https://github.com/bluemoonfoundry/bmf-daz-content-brows
 森の風景  → Japanese_Edo_Village が 1 位(My Tree Pack より上)
 中世の鎧を着た戦士 → The Shogun&#x27;s Armoury が 1 位(中世ヨーロッパではない)</code></pre>
 <p><strong>肝心の「和室」自体は e5 の方が悪い。</strong> 上位に Luxury Hotel Room / Dystopian Room Interior / Cell Room という汎用の部屋が混ざり、<code>Japanese Onsen</code> が 7 位から <strong>179 位</strong>へ沈む。</p>
-<p><strong>そして閾値フィルタが成立しなくなる。</strong> 全 3,244 件が 0.67〜0.84 に収まり、上位と中央値の差が 0.05〜0.09 しかない。<code>和室の背景</code> は 75% で 65 件、<strong>78% で 1 件</strong>。1 ポイントで数百件動くため、<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a> のような目盛りが作れない。</p>
+<p><strong>そして閾値フィルタが成立しなくなる。</strong> 全 3,244 件が 0.67〜0.84 に収まり、上位と中央値の差が 0.05〜0.09 しかない。<code>和室の背景</code> は 75% で 65 件、<strong>78% で 1 件</strong>。1 ポイントで数百件動くため、<a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a> のような目盛りが作れない。</p>
 <p>平均一致で e5 が勝つのは、日本語クエリに対して同じ「日本テーマ」の塊を返しがちなことによる見かけの一致も含むと見ている。</p></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-translate-query">案 2 — クエリだけ日英翻訳する(2026-08-27 に採用・実装)</a><a class="chip" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-translate-query">案 2 — クエリだけ日英翻訳する(2026-08-27 に採用・実装)</a><a class="chip" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a><a class="chip" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a></div>
 </section>
 <section class="node node--convention depth-2" id="xl-bench">
 <header class="node__head">
@@ -606,8 +613,8 @@ python check_crosslingual.py --json &gt; e5.json</code></pre>
 <h2 class="node__title">既知の限界</h2>
 <a class="node__id" href="#limits">limits</a>
 </header>
-<div class="prose"><ul><li><strong>グルーピングの過剰マージが 4 件。</strong> ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>(既定 5)で調整できる</li><li><strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong> 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える</li><li><strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong> 差分実行(<code>force: false</code>)で動くことは API 経由で確認済み</li><li><strong><code>ui/src</code> の submodule はもう取得できない。</strong> upstream の <code>bmf-daz-content-browser-ui</code> が消えている(<code>Repository not found</code>)。以前ここには「submodule を取得すればフィルタを追加できる」と書いてあったが、<strong>それはできない</strong>。UI を変えるなら <code>ui/dist</code> のバンドルを直接パッチする(<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a> に手順)。<code>source</code> は API が返しているので「Content Library のみ表示」のようなフィルタ自体は作れる</li><li><strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong> 候補プールを 5000 に上げた結果、Min match: Any では 3,244 件・1.84MB が返る(約 2.5 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はサーバ側ページングだが、<code>ui/src</code> が失われた以上 UI 側の対応はバンドルのパッチになる</li><li><strong>bge-m3 は日本固有の語彙が弱い。</strong> 「和室」が効かず、<code>Japanese Onsen</code> が 1 位から 5 位に落ちた(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a>)</li></ul></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
+<div class="prose"><ul><li><strong>グルーピングの過剰マージが 4 件。</strong> ディスク上に製品の境界は存在せず、命名規則からの推定なので必ず誤差が出る。1 製品あたり中央値 32 ファイルと全体は健全だが、最大は Thunder-3D の 8,480 ファイルで、これはベンダーディレクトリごと 1 製品にまとめてしまっている。<code>.env</code> の <code>SCAN_MIN_PRODUCT_DEPTH</code>(既定 5)で調整できる</li><li><strong>物理的に 2 箇所へ展開された製品は別製品として出る場合がある。</strong> 片方が CMS 登録済み・もう片方が未登録というケース。ディスク上に実際 2 つあるので誤りではないが、一覧では重複に見える</li><li><strong>UI の Update ボタンが <code>force</code> をどう送っているか未確認。</strong> 差分実行(<code>force: false</code>)で動くことは API 経由で確認済み</li><li><strong><code>ui/src</code> の submodule はもう取得できない。</strong> upstream の <code>bmf-daz-content-browser-ui</code> が消えている(<code>Repository not found</code>)。以前ここには「submodule を取得すればフィルタを追加できる」と書いてあったが、<strong>それはできない</strong>。UI を変えるなら <code>ui/dist</code> のバンドルを直接パッチする(<a class="ref" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a> に手順)。<code>source</code> は API が返しているので「Content Library のみ表示」のようなフィルタ自体は作れる</li><li><strong>検索は毎回ほぼ全製品を 1 応答で返す。</strong> 候補プールを 5000 に上げた結果、Min match: Any では 3,244 件・1.84MB が返る(約 2.5 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はサーバ側ページングだが、<code>ui/src</code> が失われた以上 UI 側の対応はバンドルのパッチになる</li><li><strong>bge-m3 は日本固有の語彙が弱い。</strong> 「和室」が効かず、<code>Japanese Onsen</code> が 1 位から 5 位に落ちた(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a>)</li></ul></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#ui-thresholds">UI のパッチ(Min match の目盛りと最小文字数)</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
 </section>
 </section>
 <section class="node node--section depth-0" id="resume">

@@ -627,8 +627,8 @@ section open "未着手・判断待ち":
 
       @bug-search-cap に書いた「50%+ で 3,236 件、70%+ で 2 件」という目安は、予告どおり完全に無効になった。
       """
-    task ui-thresholds "UI の Min match を作り直した(2026-08-27)":
-      commits: "953c59d, aace1c8"
+    task ui-thresholds "UI のパッチ(Min match の目盛りと最小文字数)":
+      commits: "953c59d, aace1c8, 7ff790a"
       ladder: "Any / 40%+ / 45%+ / 50%+ / 60%+"
       status: done
       ui_src_available: false
@@ -653,6 +653,22 @@ section open "未着手・判断待ち":
       **バンドルのファイル名も必ず付け替えること。** Vite はコンテンツハッシュで命名するので、中身だけ変えて名前を据え置くとブラウザのキャッシュが古い方を出し続ける。`ui/dist/index.html` の `<script src>` も併せて書き換える。サーバ再起動は不要(静的ファイルは都度ディスクから配信)。
 
       目盛りの値そのものはモデル依存。bge-large-en-v1.5 に戻すなら 60/70/90 の側が再び正しくなる(@js-switch の表)。
+      """
+      """
+      **最小文字数の 3 文字制限(2026-08-27 修正)。** 「和室」で検索しても `Type at least 3 characters to search.` が出るだけで、リクエストすら飛んでいなかった。ラテン文字なら 2 文字はほぼ無意味なので妥当な下限だが、日本語の 2 文字は完全な語(和室・着物・背景・教室)。
+
+      バンドル内の 2 箇所が対象。
+
+      ```js
+      enabled:t&&e.trim().length>2,        // リクエストのゲート
+      children:t&&e.trim().length<=2?      // 「3文字以上入力してください」の表示条件
+      ```
+
+      かな・カタカナ・漢字を含むときは長さに関係なく通すようにした(判定文字クラスは `src/query_translation.py` の `_JAPANESE_RE` と同じ)。ラテン側の下限は据え置きなので `ab` や `G8` は従来どおり 3 文字目を待つ。
+
+      ブラウザで確認済み。「和室」で 3,244 件が返り、上位は HY ClassRoom 60% / Japanese Restaurant 59% / Japanese Onsen 59% / Japanese Neat Classroom 59% / XI Japanese Bath 58%。
+
+      **この種の「UI 側で握り潰されている」不具合は、サーバ側をいくら測っても見つからない。** @xl-bench も `check_search_quality.py` も API を直接叩くので、UI のゲートは素通りする。日本語まわりで「出ない」と言われたら、まず UI が投げているかを疑うこと。
       """
     task e5-trial "multilingual-e5-large を試したが不採用(2026-08-27)":
       mean_overlap_bge_m3: 6.17
