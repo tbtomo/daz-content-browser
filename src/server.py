@@ -533,7 +533,15 @@ def run_search(request: UISearchRequest):
     ]
     if request.min_relevance > 0:
         results = [r for r in results if r.get("relevance_score", 0) >= request.min_relevance]
-    return {"results": results, "total": len(results), "query": request.query, "took_ms": raw.get("took_ms", 0)}
+    return {
+        "results": results,
+        "total": len(results),
+        "query": request.query,
+        # What was actually embedded, when a Japanese query was translated
+        # first. Absent for queries used verbatim.
+        "searched_as": raw.get("query") if raw.get("translated_from") else None,
+        "took_ms": raw.get("took_ms", 0),
+    }
 
 
 @app.post("/api/v1/query")

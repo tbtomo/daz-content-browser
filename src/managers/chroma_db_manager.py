@@ -4,6 +4,7 @@ import chromadb
 import logging
 from typing import List, Optional
 from embedding_utils import generate_embeddings
+from query_translation import translate_query
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,10 @@ class ChromaDbManager:
             dict: Search results including total_hits, limit, offset, and list of results.
         """
 
-        # --- 1. Generate Query Embedding ---
+        # --- 1. Translate, then Generate Query Embedding ---
+        # The index is English. A Japanese query is translated first so the embedding
+        # model compares like with like; anything else passes through untouched.
+        prompt, translated_from = translate_query(prompt)
         query_embedding = generate_embeddings(prompt, is_query=True)
 
         # --- 2. Build the Combined Metadata Filter ---
@@ -229,6 +233,10 @@ class ChromaDbManager:
             "limit": limit,
             "offset": offset,
             "results": paginated_results,
+            # Present only when the query was rewritten, so a caller can show what
+            # was actually searched rather than what the user typed.
+            "translated_from": translated_from,
+            "query": prompt,
         }
         
 

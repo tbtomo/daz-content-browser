@@ -39,9 +39,13 @@ hiddenimports = [
 ]
 
 # transformers and optimum are only needed for the one-time ONNX export
-# (export_model.py), never at server runtime. Excluding them removes ~2.8 GB
-# of torch + transformers from the bundle.
-for pkg in ('chromadb', 'onnxruntime', 'tokenizers'):
+# (export_model.py, export_translation_model.py), never at server runtime. Excluding
+# them removes ~2.8 GB of torch + transformers from the bundle.
+#
+# sentencepiece is the exception: it is small, pulls in no torch, and the query
+# translator needs it at runtime because Marian has no fast tokenizer and so ships
+# .spm files rather than a tokenizer.json (see src/query_translation.py).
+for pkg in ('chromadb', 'onnxruntime', 'tokenizers', 'sentencepiece'):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b

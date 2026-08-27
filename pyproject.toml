@@ -41,6 +41,7 @@ local_llm = [
     "optimum[onnxruntime]",   # HuggingFace Optimum with ONNX export + ORT backend
     "transformers",
     "tokenizers",
+    "sentencepiece",          # Marian tokenizer for the query translator (runtime)
 ]
 
 openai = [
