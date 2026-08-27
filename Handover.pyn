@@ -5,7 +5,7 @@ meta meta "この文書について":
   indexed_products: 3244
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "b037a17(日本語クエリを英訳してから埋め込む)"
+  last_code_commit: "ee43acb(成人向け語彙に対応した翻訳バックエンドを追加)"
   last_session: "2026-08-27(bge-m3 へ切替 → e5 却下 → クエリ翻訳を実装 → Poser ルートの作法を確認)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
@@ -13,7 +13,7 @@ meta meta "この文書について":
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
   sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)"
   status: implemented_verified_and_pushed
-  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 97 passed。停止中は test_api.py が 7 failed / 9 errors"
+  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 110 passed。停止中は test_api.py が 7 failed / 9 errors"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -68,7 +68,7 @@ section readme-start "30秒で再開するには":
   """
 
 section state "現在の状態":
-  commits: 22
+  commits: 25
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 3244
   indexed_before: 1620
@@ -76,7 +76,7 @@ section state "現在の状態":
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
   pushed: true
-  tests: "97 passed(DAZ Studio 起動時)"
+  tests: "110 passed(DAZ Studio 起動時)"
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
@@ -489,6 +489,7 @@ section open "未着手・判断待ち":
       """
       task jt-impl "実装(2026-08-27)":
         added_dependency: "sentencepiece のみ"
+        backends: "onnx(fugumt・既定)/ ctranslate2(sugoi-v4・成人向け語彙)"
         commit: b037a17
         english_impact: "なし(件数まで同一)"
         model: staka/fugumt-ja-en
@@ -726,6 +727,87 @@ section open "未着手・判断待ち":
       ```
 
       **カタログに良い答えがあるかどうかは測れない。** 「和室」なら畳も障子も無いので天井が低い。そこは別途 SQLite を見ること。
+      """
+    issue nsfw-gap "成人向け語彙が日本語で引けなかった(2026-08-27 解決)":
+      cause: "翻訳器の学習データが当該領域をフィルタしている"
+      commit: ee43acb
+      index_at_fault: false
+      status: resolved
+      """
+      **症状。** 英語なら引ける成人向けの語が、日本語だと引けない。
+
+      **切り分けの結果、インデックスも埋め込みモデルも無実だった。** 英語で引けば正しい製品が上位に来るので、壊れていたのは翻訳器だけ。しかも「惜しい誤訳」ではなく**別ジャンルへ連れて行く**タイプだった。
+
+      | 日本語 | fugumt の訳 | それで出るもの | 英語で引いた場合 |
+      |---|---|---|---|
+      | 緊縛 | tight-knit | dForce Flashback **Suit** | PVC Hogtie bondage cross |
+      | 鞭 | **sputum**(痰) | Speculum / Medical Scrubs | SY Whips and Lashes |
+      | セックス | sleek | Happy Lacey **Dress** | Genesis 9 Sex Poses |
+      | 猿ぐつわ | monkey! | aniMate Monster Pack | Ball Gags |
+      | 胸 | chest | Inked **Chest** 03 | HS dForce Breast |
+
+      **原因は学習データ。** `staka/fugumt-ja-en` の学習元(JParaCrawl 系の Web クロール対訳)は成人向け表現がフィルタされているのが通例で、この領域が分布の外にある。一般語で 9.0/10 出るのに、ここだけ意味不明な出力になるのはそのため。
+
+      **カタカナ外来語は全部正しい。** ランジェリー / ビキニ / ラテックス / ストッキング / コルセット / ハーネス / フェチ / 水着 / 下着。壊れるのは和語・漢語の側。30 語で測って fugumt は 22 語一致。
+
+      カタログ側の語彙は十分ある(bondage 55 / restraint 35 / cuffs 40 / breast 46 / genital 77 件など、`embedding_text` 基準)。
+      """
+      """
+      **`QUERY_TRANSLATION_BACKEND=ctranslate2` で sugoi-v4 に切り替えられるようにした。** ビジュアルノベル翻訳コミュニティのモデルで、この語彙を学習に含む。
+
+      ```
+      緊縛 → Bondage      → Bondage Rope / Bondage Belt / BondageCuffs
+      鞭   → Whip         → SY Whips and Lashes / WhipMark
+      セックス → Sex       → Genesis 9 Sex Poses / SexToys
+      拘束ポーズ → Restraint pose → Japanese Crotch Splitting Restraint
+      ```
+
+      | | onnx(既定) | ctranslate2 |
+      |---|---|---|
+      | モデル | staka/fugumt-ja-en | entai2965/sugoi-v4-ja-en-ctranslate2 |
+      | サイズ | 360 MB | **1.1 GB** |
+      | 1 クエリ | 約 30 ms | 約 130 ms |
+      | 30 語ベンチ | 22/30 | 23/30 |
+      | ライセンス | CC-BY-SA | **NTT / 研究目的のみ・商用不可** |
+
+      **点数(22 対 23)はほぼ同じだが、壊れ方の質が違う。** fugumt の失敗は別ジャンルへ飛ぶが、sugoi の失敗はローマ字化に留まる。
+
+      **ライセンス上の扱い。** sugoi は NTT の JParaCrawl 由来で研究目的のみ。`models/` は gitignore 済み・`vab.spec` もバンドルから除外するので**再配布は発生しない**。要求されたときだけ取得する形にしてある。上流へ PR を出す場合もこの形(同梱しない・任意ダウンロード)を保つこと。
+
+      **依存は ctranslate2 が増えた。** 自己完結した C++ ホイールで torch を引かないため、@jt-impl の「torch も transformers も使わない」制約はそのまま保たれている。
+      """
+      """
+      **どのモデルにも穴があるので、用語辞書を前段に置いた。** `query_glossary.ja-en.json`(パスは `QUERY_GLOSSARY_PATH` で変更可)。
+
+      sugoi は一部の語を訳さずローマ字にする。検索としては何もヒットしなくなる。
+
+      ```
+      縄       → Nawa
+      猿ぐつわ  → Sarugutsuwa
+      和室     → Wamuro     ← 読みすら誤り(わしつ)。onnx 側は "Japanese-style room" と正しく訳せていた
+      ```
+
+      **照合は「クエリ全体の完全一致」であって部分置換ではない。** 単漢字は無関係な語の中に現れるので、`縄` をどこでも置換すると **沖縄 が "rope" になる**。検索クエリはたいてい語そのものなので、この制約で実用上は足りる。テストで固定してある。
+
+      辞書に載せる英語は**カタログが実際に使っている語**にすること。迷ったら `enriched_products.db` を grep する。
+
+      追加の判断材料は `/api/v1/search` の `searched_as`(実際に何を検索したか)。日本語で変な結果が出たら、まずここを見る。
+      """
+      """
+      **一般クエリはわずかに劣化する。** @xl-bench の平均一致が **9.0/10 → 8.33/10**。
+
+      | クエリ | onnx | ctranslate2 |
+      |---|---|---|
+      | 和室の背景 | 10/10 | 10/10 |
+      | 学校の教室 | 10/10 | 9/10 |
+      | ロングヘアの女性キャラ | 10/10 | 8/10 |
+      | 森の風景 | 10/10 | 8/10 |
+      | 中世の鎧を着た戦士 | 6/10 | **7/10** |
+      | 和室 | 8/10 | 8/10 |
+
+      上位ヒット自体は変わらないので体感差は小さいが、数字としては下がる。**成人向け語彙を取るか一般語の精度を取るかのトレードオフ**で、`.env` の 1 行で行き来できる。
+
+      **バックエンドは互いを補う。** 設定した側のモデルが無ければもう一方に落ち、両方無ければ従来どおり原文のまま検索する。翻訳器の欠落が検索を失敗させることはない。
       """
   section pending "判断待ち":
     """
