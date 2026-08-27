@@ -104,7 +104,7 @@ a{color:var(--accent)}
 <h2 class="node__title">この文書について</h2>
 <a class="node__id" href="#meta">meta</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>canonical</th><td><code>&quot;このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない&quot;</code></td></tr><tr><th>embedding_model_note</th><td><code>&quot;BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯&quot;</code></td></tr><tr><th>indexed_products</th><td><code>3244</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;aace1c8(bge-m3 に合わせて閾値を作り直し)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(@js-switch を実行。日本語検索が動くようになった)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>pyn_repo</th><td><code>&quot;https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)&quot;</code></td></tr><tr><th>resume_entry_point</th><td><code>&quot;@readme-start を読む → @next-steps の 1 番から&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;DAZ Studio(CMS PostgreSQL)起動中なら 63 passed。停止中は test_api.py が 7 failed / 9 errors&quot;</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>branch</th><td><code>feature/content-library-indexing</code></td></tr><tr><th>canonical</th><td><code>&quot;このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない&quot;</code></td></tr><tr><th>embedding_model_note</th><td><code>&quot;BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯&quot;</code></td></tr><tr><th>indexed_products</th><td><code>3244</code></td></tr><tr><th>indexed_products_before</th><td><code>1620</code></td></tr><tr><th>language</th><td><code>ja</code></td></tr><tr><th>last_code_commit</th><td><code>&quot;aace1c8(bge-m3 に合わせて閾値を作り直し)&quot;</code></td></tr><tr><th>last_session</th><td><code>&quot;2026-08-27(@js-switch 実行。e5 を比較したうえで bge-m3 に確定)&quot;</code></td></tr><tr><th>origin</th><td><code>&quot;https://github.com/tbtomo/daz-content-browser.git(fork / public)&quot;</code></td></tr><tr><th>project</th><td><code>&quot;VAB Content Library 対応&quot;</code></td></tr><tr><th>pyn_repo</th><td><code>&quot;https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)&quot;</code></td></tr><tr><th>resume_entry_point</th><td><code>&quot;@readme-start を読む → @next-steps の 1 番から&quot;</code></td></tr><tr><th>sessions</th><td><code>&quot;2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)&quot;</code></td></tr><tr><th>status</th><td><code>implemented_verified_and_pushed</code></td></tr><tr><th>test_note</th><td><code>&quot;DAZ Studio(CMS PostgreSQL)起動中なら 63 passed。停止中は test_api.py が 7 failed / 9 errors&quot;</code></td></tr><tr><th>upstream</th><td><code>&quot;https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)&quot;</code></td></tr><tr><th>workdir</th><td><code>&quot;D:\\OtherApps\\daz-content-browser&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><p>この文書は <code>Handover.html</code> を PYN(<code>.pyn</code>)へ書き換えたものです。節見出しはすべてノードになっており、HTML の <code>id</code> 属性がそのままノード ID になっています(<code>#state</code> → <code>state</code> など)。</p>
 <p>書き換えは <code>python -m pyn patch Handover.pyn --ops ops.json</code> が安全です(ID 宛なので行番号がずれても当たり、失敗時は文書が変更されません)。<code>#</code> コメントは作業メモ扱いで、射影を再生成すると消えます。</p></div>
 </section>
@@ -142,7 +142,7 @@ make dev-server                              # http://localhost:8000 に 3,244 �
 <h2 class="node__title">現在の状態</h2>
 <a class="node__id" href="#state">state</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>20</code></td></tr><tr><th>embedding_model</th><td><code>&quot;BAAI/bge-m3(2026-08-27 に切替済み。旧モデルのベクトルは .bak に退避)&quot;</code></td></tr><tr><th>indexed</th><td><code>3244</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1624</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1581</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;63 passed(DAZ Studio 起動時)&quot;</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>commits</th><td><code>20</code></td></tr><tr><th>embedding_model</th><td><code>&quot;BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)&quot;</code></td></tr><tr><th>indexed</th><td><code>3244</code></td></tr><tr><th>indexed_before</th><td><code>1620</code></td></tr><tr><th>newly_found</th><td><code>1624</code></td></tr><tr><th>newly_found_cms_local</th><td><code>43</code></td></tr><tr><th>newly_found_filesystem</th><td><code>1581</code></td></tr><tr><th>pushed</th><td><code>true</code></td></tr><tr><th>tests</th><td><code>&quot;63 passed(DAZ Studio 起動時)&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><div class="table-wrap"><table><thead><tr><th>指標</th><th>値</th><th>補足</th></tr></thead><tbody><tr><td>インデックス済み</td><td>3,244</td><td>作業前 1,620</td></tr><tr><td>新規に見えた製品</td><td>1,624</td><td>cms-local 43 / filesystem 1,581</td></tr><tr><td>ブランチのコミット</td><td>16</td><td>すべて fork に push 済み</td></tr><tr><td>テスト</td><td>63 passed</td><td>DAZ Studio 停止中は <code>test_api.py</code> が 7 failed / 9 errors(<a class="ref" href="#resume">再開手順</a> の 2)</td></tr><tr><td>埋め込みモデル</td><td><code>BAAI/bge-large-en-v1.5</code></td><td>差し替え可能になったが<strong>まだ英語専用のまま</strong>(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a> 未実行)</td></tr></tbody></table></div>
 <p>作業ツリーはクリーン、stash なし。UI は一切改造していない(理由は <a class="ref" href="#design">何を作ったか</a>)。</p></div>
 <div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#resume">再開手順</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a><a class="chip" href="#design">何を作ったか</a></div>
@@ -389,8 +389,8 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <h2 class="node__title">次の一手(2026-08-27 時点)</h2>
 <a class="node__id" href="#next-steps">next-steps</a>
 </header>
-<div class="prose"><ol><li><strong>和室の背景の後退を許容するか判断する。</strong> bge-m3 は日本固有の語彙(和室、床の間など)が弱く、切り替え前に 1 位だった <code>Japanese Onsen</code> が 5 位に落ちた。他の日本語クエリは明確に改善しているので全体としては前進だが、気になるなら日本語特化モデル(<code>intfloat/multilingual-e5-large</code> など)の比較を検討する。E5 系は <code>query: </code> / <code>passage: </code> 接頭辞が要るが、その規約は <code>_MODEL_CONVENTIONS</code> に実装済み(<a class="ref" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a>)</li><li><strong><code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。</strong> 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定</li><li><strong>既存 fs 製品の <code>content_dirs</code> は差分実行では更新されない。</strong> コンテンツを別ルートへ追加・移動したときは <code>python vab.py load --phase scan --all</code> が要る(<code>--force</code> と違い SQLite も ChromaDB も消えない)</li><li><strong><code>chroma_db.bge-large-en-v1.5.bak/</code> を残すか捨てるか。</strong> 31MB。bge-m3 で確定なら消してよい</li></ol></div>
-<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-impl">コード側の対応(実装済み・2026-08-27)</a></div>
+<div class="prose"><ol><li><strong>「和室の背景」をどうしても改善したいなら <a class="ref" href="#js-translate-query">案 2 — クエリだけ日英翻訳する</a>。</strong> 日本語クエリを英訳してから既存モデルに投げる案。英語で引けば <code>Japanese room</code> → Japanese Neat Classroom / Japanese Restaurant / XI Japanese Bath と上位が埋まるので、効果はほぼ確実。ただし翻訳手段の依存(ローカル小型モデルか外部 API)が増える。外部 API なら検索語が外部へ出る点も判断材料。<strong>モデル差し替えでの改善は <a class="ref" href="#e5-trial">multilingual-e5-large を試したが不採用(2026-08-27)</a> で一度否定されている</strong></li><li><strong><code>collect_untracked_dirs()</code> の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。</strong> 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定</li><li><strong>既存 fs 製品の <code>content_dirs</code> は差分実行では更新されない。</strong> コンテンツを別ルートへ追加・移動したときは <code>python vab.py load --phase scan --all</code> が要る</li><li><strong>退避したベクトルとモデルを残すか捨てるか。</strong> <code>chroma_db.bge-large-en-v1.5.bak/</code>(31MB)、<code>chroma_db.multilingual-e5-large.bak/</code>(32MB)、<code>models/bge-large-en-v1.5/</code>(1.3GB)、<code>models/multilingual-e5-large/</code>(2.1GB)。bge-m3 で確定なら消してよい</li></ol></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-translate-query">案 2 — クエリだけ日英翻訳する</a><a class="chip" href="#e5-trial">multilingual-e5-large を試したが不採用(2026-08-27)</a></div>
 </section>
 <section class="node node--idea depth-1" id="japanese-search">
 <header class="node__head">
@@ -419,7 +419,7 @@ python -m pyn html  Handover.pyn --title &quot;DAZ Studio の Content Library �
 <h2 class="node__title">案 2 — クエリだけ日英翻訳する</h2>
 <a class="node__id" href="#js-translate-query">js-translate-query</a>
 </header>
-<div class="table-wrap"><table class="attrs"><tbody><tr><th>new_dependency</th><td><code>true</code></td></tr><tr><th>reindex_needed</th><td><code>false</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>new_dependency</th><td><code>true</code></td></tr><tr><th>reindex_needed</th><td><code>false</code></td></tr><tr><th>status</th><td><code>&quot;未実装。@e5-trial でモデル差し替え路線が否定されたので、やるならこれ&quot;</code></td></tr></tbody></table></div>
 <div class="prose"><p>インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。<code>query_model</code> が <code>embedding_model</code> と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、<strong>翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える</strong>のと、訳語のブレがそのまま検索品質のブレになるのが難点。<a class="ref" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a> が通るならそちらが素直。</p></div>
 <div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-model-swap">案 1 — 多言語モデルへ差し替え(本命)</a></div>
 </section>
@@ -482,6 +482,42 @@ fatal: repository &#x27;https://github.com/bluemoonfoundry/bmf-daz-content-brows
 <p><strong>バンドルのファイル名も必ず付け替えること。</strong> Vite はコンテンツハッシュで命名するので、中身だけ変えて名前を据え置くとブラウザのキャッシュが古い方を出し続ける。<code>ui/dist/index.html</code> の <code>&lt;script src&gt;</code> も併せて書き換える。サーバ再起動は不要(静的ファイルは都度ディスクから配信)。</p>
 <p>目盛りの値そのものはモデル依存。bge-large-en-v1.5 に戻すなら 60/70/90 の側が再び正しくなる(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a> の表)。</p></div>
 <div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#limits">既知の限界</a><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
+</section>
+<section class="node node--task depth-2" id="e5-trial">
+<header class="node__head">
+<span class="badge">task</span>
+<h2 class="node__title">multilingual-e5-large を試したが不採用(2026-08-27)</h2>
+<a class="node__id" href="#e5-trial">e5-trial</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>mean_overlap_bge_m3</th><td><code>6.17</code></td></tr><tr><th>mean_overlap_e5</th><td><code>6.83</code></td></tr><tr><th>reason</th><td><code>&quot;言語バイアス・和室単体の悪化・スコア差が狭く閾値が作れない&quot;</code></td></tr><tr><th>status</th><td><code>rejected</code></td></tr><tr><th>verdict</th><td><code>&quot;bge-m3 のまま据え置き&quot;</code></td></tr></tbody></table></div>
+<div class="prose"><p>bge-m3 が「和室」を上手く扱えないという指摘を受けて、<strong><a class="ref" href="#js-translate-query">案 2 — クエリだけ日英翻訳する</a> より先に、まず別の多言語モデルを実測した</strong>。結論は <strong>bge-m3 のまま据え置き</strong>。e5 は平均点では勝つが、実利で負ける。</p>
+<p>まず切り分けとして分かった前提が 2 つある。</p>
+<p><strong>カタログに和室が存在しない。</strong> <code>tatami</code> / <code>shoji</code> / <code>ryokan</code> / <code>washitsu</code> を名前にも <code>embedding_text</code> にも含む製品は <strong>0 件</strong>。<code>Japanese</code> を含む製品は 32 件あるが、実在するのは Japanese Onsen / XI Japanese Bath / Japanese Restaurant / Japanese Neat Classroom あたりで、<strong>「和室」への最良の答えはこれらが上限</strong>。どのモデルでもこれ以上は出ない。<code>tatami</code> は英語で引いても TAIMANIN が返る。</p>
+<p><strong>「和室」単体は bge-m3 でも悪くない。</strong> 1 位 <code>Japanese Restaurant</code>、許容 7 製品のうち 6 件が上位 10 位。弱いのは <strong>「和室の背景」</strong>の方で、「背景」が汎用の背景方向へ引っ張る。</p>
+<p>計測には <a class="ref" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a> を新設した。</p></div>
+<div class="prose"><div class="table-wrap"><table><thead><tr><th></th><th>bge-m3(採用)</th><th>multilingual-e5-large</th></tr></thead><tbody><tr><td>英語版との top-10 一致(平均)</td><td>6.17</td><td><strong>6.83</strong></td></tr><tr><td>和室の背景</td><td>3/10</td><td><strong>8/10</strong></td></tr><tr><td>和室 → Japanese Onsen の順位</td><td><strong>7 位</strong></td><td>179 位</td></tr><tr><td>森の風景 の 1 位</td><td><strong>The Mountains</strong></td><td>Japanese_Edo_Village</td></tr><tr><td>上位−中央値のスコア差</td><td><strong>0.15〜0.23</strong></td><td>0.05〜0.09</td></tr><tr><td>再埋め込み時間</td><td>48 秒</td><td>49 秒</td></tr></tbody></table></div>
+<p><strong>e5 は日本語クエリに言語バイアスが出る。</strong> 意味ではなく「日本語で聞いたこと」に反応して日本テーマの製品が寄る。</p>
+<pre><code>森        → Sauna Fun 1 / RE1 / Winter Forest Set / DOA Nyotengu / Japanese_Edo_Village / Oni Demon
+森の風景  → Japanese_Edo_Village が 1 位(My Tree Pack より上)
+中世の鎧を着た戦士 → The Shogun&#x27;s Armoury が 1 位(中世ヨーロッパではない)</code></pre>
+<p><strong>肝心の「和室」自体は e5 の方が悪い。</strong> 上位に Luxury Hotel Room / Dystopian Room Interior / Cell Room という汎用の部屋が混ざり、<code>Japanese Onsen</code> が 7 位から <strong>179 位</strong>へ沈む。</p>
+<p><strong>そして閾値フィルタが成立しなくなる。</strong> 全 3,244 件が 0.67〜0.84 に収まり、上位と中央値の差が 0.05〜0.09 しかない。<code>和室の背景</code> は 75% で 65 件、<strong>78% で 1 件</strong>。1 ポイントで数百件動くため、<a class="ref" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a> のような目盛りが作れない。</p>
+<p>平均一致で e5 が勝つのは、日本語クエリに対して同じ「日本テーマ」の塊を返しがちなことによる見かけの一致も含むと見ている。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-translate-query">案 2 — クエリだけ日英翻訳する</a><a class="chip" href="#xl-bench">日本語検索の物差し(check_crosslingual.py)</a><a class="chip" href="#ui-thresholds">UI の Min match を作り直した(2026-08-27)</a></div>
+</section>
+<section class="node node--convention depth-2" id="xl-bench">
+<header class="node__head">
+<span class="badge">convention</span>
+<h2 class="node__title">日本語検索の物差し(check_crosslingual.py)</h2>
+<a class="node__id" href="#xl-bench">xl-bench</a>
+</header>
+<div class="table-wrap"><table class="attrs"><tbody><tr><th>added</th><td><code>2026-08-27</code></td></tr><tr><th>baseline_bge_m3</th><td><code>6.17/10</code></td></tr><tr><th>commit</th><td><code>c72c154</code></td></tr></tbody></table></div>
+<div class="prose"><p><code>check_crosslingual.py</code>。モデルを替えたときに「日本語検索が良くなったのか」を判定するために作った。</p>
+<p><strong>英語で同じ意図を書いたクエリを基準にする。</strong> インデックスは英語なので、英語クエリが返すものが天井。日本語クエリがその上位 10 件をどれだけ再現するかを測る。手書きの正解リストは陳腐化するし、絶対スコアはモデルを跨ぐと比較できない(<a class="ref" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a>)が、この一致率は跨げる。</p>
+<pre><code class="lang-bash">python check_crosslingual.py              # サーバ起動が必要
+python check_crosslingual.py --json &gt; e5.json</code></pre>
+<p><strong>カタログに良い答えがあるかどうかは測れない。</strong> 「和室」なら畳も障子も無いので天井が低い。そこは別途 SQLite を見ること。</p></div>
+<div class="edges"><span class="edges__label">→ 参照</span><a class="chip" href="#js-switch">切り替え手順(2026-08-27 実行済み)</a></div>
 </section>
 </section>
 <section class="node node--section depth-1" id="pending">

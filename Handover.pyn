@@ -6,7 +6,7 @@ meta meta "この文書について":
   indexed_products_before: 1620
   language: ja
   last_code_commit: "aace1c8(bge-m3 に合わせて閾値を作り直し)"
-  last_session: "2026-08-27(@js-switch を実行。日本語検索が動くようになった)"
+  last_session: "2026-08-27(@js-switch 実行。e5 を比較したうえで bge-m3 に確定)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
@@ -59,7 +59,7 @@ section readme-start "30秒で再開するには":
 
 section state "現在の状態":
   commits: 20
-  embedding_model: "BAAI/bge-m3(2026-08-27 に切替済み。旧モデルのベクトルは .bak に退避)"
+  embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 3244
   indexed_before: 1620
   newly_found: 1624
@@ -354,10 +354,10 @@ section repo "リポジトリと環境":
 section open "未着手・判断待ち":
   section next-steps "次の一手(2026-08-27 時点)":
     """
-    1. **和室の背景の後退を許容するか判断する。** bge-m3 は日本固有の語彙(和室、床の間など)が弱く、切り替え前に 1 位だった `Japanese Onsen` が 5 位に落ちた。他の日本語クエリは明確に改善しているので全体としては前進だが、気になるなら日本語特化モデル(`intfloat/multilingual-e5-large` など)の比較を検討する。E5 系は `query: ` / `passage: ` 接頭辞が要るが、その規約は `_MODEL_CONVENTIONS` に実装済み(@js-impl)
+    1. **「和室の背景」をどうしても改善したいなら @js-translate-query。** 日本語クエリを英訳してから既存モデルに投げる案。英語で引けば `Japanese room` → Japanese Neat Classroom / Japanese Restaurant / XI Japanese Bath と上位が埋まるので、効果はほぼ確実。ただし翻訳手段の依存(ローカル小型モデルか外部 API)が増える。外部 API なら検索語が外部へ出る点も判断材料。**モデル差し替えでの改善は @e5-trial で一度否定されている**
     2. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
-    3. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る(`--force` と違い SQLite も ChromaDB も消えない)
-    4. **`chroma_db.bge-large-en-v1.5.bak/` を残すか捨てるか。** 31MB。bge-m3 で確定なら消してよい
+    3. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
+    4. **退避したベクトルとモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。bge-m3 で確定なら消してよい
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
@@ -386,6 +386,7 @@ section open "未着手・判断待ち":
     option js-translate-query "案 2 — クエリだけ日英翻訳する":
       new_dependency: true
       reindex_needed: false
+      status: "未実装。@e5-trial でモデル差し替え路線が否定されたので、やるならこれ"
       """
       インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。`query_model` が `embedding_model` と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、**翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える**のと、訳語のブレがそのまま検索品質のブレになるのが難点。@js-model-swap が通るならそちらが素直。
       """
@@ -500,6 +501,63 @@ section open "未着手・判断待ち":
       **バンドルのファイル名も必ず付け替えること。** Vite はコンテンツハッシュで命名するので、中身だけ変えて名前を据え置くとブラウザのキャッシュが古い方を出し続ける。`ui/dist/index.html` の `<script src>` も併せて書き換える。サーバ再起動は不要(静的ファイルは都度ディスクから配信)。
 
       目盛りの値そのものはモデル依存。bge-large-en-v1.5 に戻すなら 60/70/90 の側が再び正しくなる(@js-switch の表)。
+      """
+    task e5-trial "multilingual-e5-large を試したが不採用(2026-08-27)":
+      mean_overlap_bge_m3: 6.17
+      mean_overlap_e5: 6.83
+      reason: "言語バイアス・和室単体の悪化・スコア差が狭く閾値が作れない"
+      status: rejected
+      verdict: "bge-m3 のまま据え置き"
+      """
+      bge-m3 が「和室」を上手く扱えないという指摘を受けて、**@js-translate-query より先に、まず別の多言語モデルを実測した**。結論は **bge-m3 のまま据え置き**。e5 は平均点では勝つが、実利で負ける。
+
+      まず切り分けとして分かった前提が 2 つある。
+
+      **カタログに和室が存在しない。** `tatami` / `shoji` / `ryokan` / `washitsu` を名前にも `embedding_text` にも含む製品は **0 件**。`Japanese` を含む製品は 32 件あるが、実在するのは Japanese Onsen / XI Japanese Bath / Japanese Restaurant / Japanese Neat Classroom あたりで、**「和室」への最良の答えはこれらが上限**。どのモデルでもこれ以上は出ない。`tatami` は英語で引いても TAIMANIN が返る。
+
+      **「和室」単体は bge-m3 でも悪くない。** 1 位 `Japanese Restaurant`、許容 7 製品のうち 6 件が上位 10 位。弱いのは **「和室の背景」**の方で、「背景」が汎用の背景方向へ引っ張る。
+
+      計測には @xl-bench を新設した。
+      """
+      """
+      | | bge-m3(採用) | multilingual-e5-large |
+      |---|---|---|
+      | 英語版との top-10 一致(平均) | 6.17 | **6.83** |
+      | 和室の背景 | 3/10 | **8/10** |
+      | 和室 → Japanese Onsen の順位 | **7 位** | 179 位 |
+      | 森の風景 の 1 位 | **The Mountains** | Japanese_Edo_Village |
+      | 上位−中央値のスコア差 | **0.15〜0.23** | 0.05〜0.09 |
+      | 再埋め込み時間 | 48 秒 | 49 秒 |
+
+      **e5 は日本語クエリに言語バイアスが出る。** 意味ではなく「日本語で聞いたこと」に反応して日本テーマの製品が寄る。
+
+      ```
+      森        → Sauna Fun 1 / RE1 / Winter Forest Set / DOA Nyotengu / Japanese_Edo_Village / Oni Demon
+      森の風景  → Japanese_Edo_Village が 1 位(My Tree Pack より上)
+      中世の鎧を着た戦士 → The Shogun's Armoury が 1 位(中世ヨーロッパではない)
+      ```
+
+      **肝心の「和室」自体は e5 の方が悪い。** 上位に Luxury Hotel Room / Dystopian Room Interior / Cell Room という汎用の部屋が混ざり、`Japanese Onsen` が 7 位から **179 位**へ沈む。
+
+      **そして閾値フィルタが成立しなくなる。** 全 3,244 件が 0.67〜0.84 に収まり、上位と中央値の差が 0.05〜0.09 しかない。`和室の背景` は 75% で 65 件、**78% で 1 件**。1 ポイントで数百件動くため、@ui-thresholds のような目盛りが作れない。
+
+      平均一致で e5 が勝つのは、日本語クエリに対して同じ「日本テーマ」の塊を返しがちなことによる見かけの一致も含むと見ている。
+      """
+    convention xl-bench "日本語検索の物差し(check_crosslingual.py)":
+      added: 2026-08-27
+      baseline_bge_m3: 6.17/10
+      commit: c72c154
+      """
+      `check_crosslingual.py`。モデルを替えたときに「日本語検索が良くなったのか」を判定するために作った。
+
+      **英語で同じ意図を書いたクエリを基準にする。** インデックスは英語なので、英語クエリが返すものが天井。日本語クエリがその上位 10 件をどれだけ再現するかを測る。手書きの正解リストは陳腐化するし、絶対スコアはモデルを跨ぐと比較できない(@js-switch)が、この一致率は跨げる。
+
+      ```bash
+      python check_crosslingual.py              # サーバ起動が必要
+      python check_crosslingual.py --json > e5.json
+      ```
+
+      **カタログに良い答えがあるかどうかは測れない。** 「和室」なら畳も障子も無いので天井が低い。そこは別途 SQLite を見ること。
       """
   section pending "判断待ち":
     """
