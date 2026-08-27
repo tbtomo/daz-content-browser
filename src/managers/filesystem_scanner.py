@@ -110,16 +110,37 @@ MIN_PRODUCT_DEPTH = int(os.getenv("SCAN_MIN_PRODUCT_DEPTH", "5"))
 
 # ─── Path classification ───────────────────────────────────────────────────────
 
+def runtime_index(parts):
+    """Returns the index of the ``Runtime`` component of a ``Runtime/Libraries`` pair.
+
+    Runtime is not always at the top of the relative path. A product unzipped with
+    its archive's own wrapper folder sits at ``{Wrapper}/Runtime/Libraries/...``, and
+    a content root registered on a product directory's parent puts every product one
+    level down. Anchoring on position 0 would classify those as modern paths and —
+    worse — make walk_content_files() reject their Poser files outright.
+
+    Args:
+        parts: Relative path components.
+
+    Returns:
+        int | None: Index of the ``Runtime`` component, or None if there is no
+            ``Runtime/Libraries`` pair.
+    """
+    for i in range(len(parts) - 1):
+        if parts[i].lower() == "runtime" and parts[i + 1].lower() == "libraries":
+            return i
+    return None
+
+
 def is_runtime_path(parts) -> bool:
-    """True when the relative path sits under Runtime/Libraries."""
-    return (len(parts) >= 2
-            and parts[0].lower() == "runtime"
-            and parts[1].lower() == "libraries")
+    """True when the relative path passes through Runtime/Libraries."""
+    return runtime_index(parts) is not None
 
 
 def runtime_group_key(parts):
     """Group key for Runtime/Libraries paths: (normalised_brand, leaf_name_lower)."""
-    inner = parts[2:]  # strip Runtime/Libraries
+    i = runtime_index(parts)
+    inner = parts[i + 2:]  # strip everything up to and including Runtime/Libraries
     if inner and inner[0].lower() in RUNTIME_TYPES:
         inner = inner[1:]  # strip type
     if not inner:
@@ -137,7 +158,8 @@ def modern_group_key(parts):
 def _infer_name_vendor(rel_parts, path_type):
     """Infers (product_name, vendor) from a product root's path components."""
     if path_type == "runtime":
-        inner = rel_parts[2:]  # strip Runtime/Libraries
+        i = runtime_index(rel_parts)
+        inner = rel_parts[i + 2:]  # strip everything up to and including Runtime/Libraries
         if inner and inner[0].lower() in RUNTIME_TYPES:
             inner = inner[1:]  # strip type
         if not inner:
@@ -176,7 +198,8 @@ def _infer_name_vendor(rel_parts, path_type):
 def _context_label(rel_parts, path_type):
     """A short label describing the product's context (figure name, or Runtime type)."""
     if path_type == "runtime":
-        return rel_parts[2] if len(rel_parts) >= 3 else ""
+        i = runtime_index(rel_parts)
+        return rel_parts[i + 2] if len(rel_parts) > i + 2 else ""
     return next((p for p in rel_parts if p.lower() in FIGURE_NAMES), "")
 
 

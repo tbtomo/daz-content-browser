@@ -185,3 +185,36 @@ def test_generic_category_directories_do_not_merge(tmp_path):
 
     products = fs.scan(FakeAnalyzer([root]))
     assert sorted(p["name"] for p in products) == ["Effie", "Simona"]
+
+
+def test_runtime_index_finds_a_nested_runtime_libraries_pair():
+    assert fs.runtime_index(("Runtime", "Libraries", "Poses")) == 0
+    assert fs.runtime_index(("Wrapper", "Runtime", "Libraries", "Poses")) == 1
+    assert fs.runtime_index(("Props", "Runtime")) is None
+    assert fs.runtime_index(()) is None
+
+
+def test_walk_accepts_poser_files_below_a_wrapper_directory(tmp_path):
+    """A product unzipped with its archive folder still keeps Runtime/Libraries.
+
+    The CMS also registers a product directory's *parent* as a content root, which
+    pushes Runtime one level down the same way. Anchoring on position 0 dropped every
+    Poser file in both layouts.
+    """
+    root = tmp_path / "My Poser Library"
+    inner = root / "vendor_product_Poser" / "Runtime" / "Libraries" / "Character" / "Thing"
+    write(inner / "Thing.cr2")
+    write(root / "vendor_product_Poser" / "stray.pz2")  # outside Runtime/Libraries
+
+    assert {p.name for p in fs.walk_content_files(root)} == {"Thing.cr2"}
+
+
+def test_product_below_a_wrapper_is_classified_as_runtime(tmp_path):
+    root = tmp_path / "My Poser Library"
+    inner = root / "vendor_product_Poser" / "Runtime" / "Libraries" / "Character" / "Thing"
+    write(inner / "Thing.cr2")
+
+    products = fs.scan(FakeAnalyzer([root]))
+    assert len(products) == 1
+    assert products[0]["name"] == "Thing"
+    assert products[0]["path_type"] == "runtime"
