@@ -98,3 +98,39 @@ class TestIsAvailableCache:
         with patch.object(c1, "status", return_value=_make_status(True)):
             c1.is_available()
         assert c2._availability_cache is None
+
+
+class TestGetContentDirectories:
+    """The plugin nests a script's return value under 'result'."""
+
+    def test_reads_paths_out_of_the_result_envelope(self, client):
+        response = {
+            "success": True,
+            "result": {
+                "success": True,
+                "paths": ["D:/DAZ 3D/Studio/My Library", "D:/Poser/My Poser Library"],
+                "native": ["D:/DAZ 3D/Studio/My Library"],
+                "poser": ["D:/Poser/My Poser Library"],
+                "other": [],
+            },
+        }
+        with patch.object(client, "_ensure_scripts_registered"), \
+             patch.object(client, "_execute_registered", return_value=response):
+            assert client.get_content_directories() == [
+                "D:/DAZ 3D/Studio/My Library",
+                "D:/Poser/My Poser Library",
+            ]
+
+    def test_missing_envelope_yields_no_directories(self, client):
+        with patch.object(client, "_ensure_scripts_registered"), \
+             patch.object(client, "_execute_registered", return_value={"success": True}):
+            assert client.get_content_directories() == []
+
+    def test_get_content_dirs_script_covers_the_poser_list(self):
+        from managers.daz_script_server import _STANDARD_SCRIPTS
+
+        script = _STANDARD_SCRIPTS["get-content-dirs"]["script"]
+        # getContentDirectory() returns a DzContentFolder, not a path.
+        assert "getContentDirectoryPath" in script
+        assert "getNumPoserDirectories" in script
+        assert "getPoserDirectoryPath" in script

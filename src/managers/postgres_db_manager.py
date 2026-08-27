@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from utilities import fetch_json_from_url, fetch_html_content, async_fetch_json_from_url, async_fetch_html_content, find_thumbnail
-from managers.managers import chroma_db_manager, sqlite_db, daz_pg_analyzer
+from managers.managers import chroma_db_manager, sqlite_db, daz_pg_analyzer, daz_script_server
 from managers.daz_db_analyzer import LOCAL_SKU_PREFIX
 from managers import filesystem_scanner
 from embedding_utils import generate_embeddings
@@ -412,6 +412,46 @@ def determine_compatibility(product_data: dict, figure_names: list) -> dict:
         'tags_to_append': compat_str or '' # Always use the original string for tags
     }
 
+def resolve_content_roots() -> list:
+    """Returns the directories to walk, from DAZ Studio itself where possible.
+
+    Two sources disagree, and neither subsumes the other:
+
+    * ``tblBasePath`` records the base paths of content the CMS has *registered*. It
+      picks up subdirectories that were never configured as content directories, and
+      misses configured ones holding nothing the CMS knows about — a Poser-format
+      library, typically, since Poser directories are a separate list in the Content
+      Directory Manager and often carry no CMS rows at all.
+    * The running DAZ Studio reports what the user actually configured, across all
+      three format lists, but is only reachable while the application is open.
+
+    Take the union: a stale CMS row costs one wasted walk of a directory that exists,
+    while a missing root makes its content permanently invisible to the scan.
+    """
+    roots = list(daz_pg_analyzer.get_content_roots()) if daz_pg_analyzer else []
+    try:
+        if daz_script_server.is_available():
+            configured = daz_script_server.get_content_directories(force=True)
+            new = [d for d in configured
+                   if d.lower().replace("\\", "/") not in
+                   {r.lower().replace("\\", "/") for r in roots}]
+            if new:
+                logger.info(
+                    f"DAZ Studio reports {len(new)} content director"
+                    f"{'y' if len(new) == 1 else 'ies'} the CMS does not: "
+                    + ", ".join(new)
+                )
+            roots.extend(new)
+        else:
+            logger.info(
+                "DAZ Script Server unavailable — falling back to the CMS base paths, "
+                "which can miss configured Poser-format libraries."
+            )
+    except Exception as e:
+        logger.warning(f"Could not read content directories from DAZ Studio: {e}")
+    return roots
+
+
 def run_filesystem_scan(args, on_progress=None, cancel_check=None) -> list:
     """Indexes content that exists on disk but has no CMS record.
 
@@ -432,7 +472,9 @@ def run_filesystem_scan(args, on_progress=None, cancel_check=None) -> list:
         return []
 
     logger.info("Filesystem scan: looking for content not registered in the DAZ CMS…")
-    products = filesystem_scanner.scan(daz_pg_analyzer, on_progress=on_progress)
+    products = filesystem_scanner.scan(
+        daz_pg_analyzer, roots=resolve_content_roots(), on_progress=on_progress
+    )
     if not products:
         return []
 

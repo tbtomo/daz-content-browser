@@ -49,14 +49,35 @@ _STANDARD_SCRIPTS = {
     },
     "get-content-dirs": {
         "description": "Return all content library directories configured in DAZ Studio",
+        # The Content Directory Manager keeps three independent lists, and Poser-format
+        # libraries appear only in the second one. getContentDirectory() returns a
+        # DzContentFolder object rather than a string — the *Path() variants are what
+        # serialise across the wire.
         "script": """(function(){
   var mgr = App.getContentMgr();
-  var dirs = [];
-  var n = mgr.getNumContentDirectories();
-  for (var i = 0; i < n; i++) {
-    dirs.push(mgr.getContentDirectory(i));
+  function collect(count, get) {
+    var dirs = [];
+    for (var i = 0; i < count.call(mgr); i++) {
+      var p = get.call(mgr, i);
+      if (p) dirs.push(String(p));
+    }
+    return dirs;
   }
-  return { success: true, paths: dirs };
+  var native = collect(mgr.getNumContentDirectories, mgr.getContentDirectoryPath);
+  var poser = collect(mgr.getNumPoserDirectories, mgr.getPoserDirectoryPath);
+  var other = [];
+  try {
+    other = collect(mgr.getNumImportDirectories, mgr.getImportDirectoryPath);
+  } catch (e) { other = []; }
+  var seen = {}, all = [];
+  var lists = [native, poser, other];
+  for (var l = 0; l < lists.length; l++) {
+    for (var i = 0; i < lists[l].length; i++) {
+      var p = lists[l][i];
+      if (!seen[p.toLowerCase()]) { seen[p.toLowerCase()] = true; all.push(p); }
+    }
+  }
+  return { success: true, paths: all, native: native, poser: poser, other: other };
 })()""",
     },
 }
@@ -206,13 +227,22 @@ class DazScriptServerClient:
     def get_content_directories(self, force: bool = False) -> list[str]:
         """Returns all content library directories from the running DAZ Studio instance.
 
+        Covers all three lists the Content Directory Manager keeps — DAZ Studio
+        formats, Poser formats and other import formats — deduplicated. This is the
+        only accurate source for the configured directories: the CMS's
+        ``tblBasePath`` records base paths of *registered content*, which is neither
+        a subset nor a superset of what the user configured.
+
         Result is cached for the session lifetime; pass force=True to refresh.
         """
         if not force and self._content_dirs_cache is not None:
             return self._content_dirs_cache
         try:
             self._ensure_scripts_registered()
-            result = self._execute_registered("get-content-dirs", {})
+            response = self._execute_registered("get-content-dirs", {})
+            # The plugin wraps a script's return value in a 'result' envelope; reading
+            # the top level silently yielded an empty list.
+            result = response.get("result") or {}
             dirs = [d for d in result.get("paths", []) if d]
             self._content_dirs_cache = dirs
             return dirs
