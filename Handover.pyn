@@ -5,15 +5,15 @@ meta meta "この文書について":
   indexed_products: 3244
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "aace1c8(bge-m3 に合わせて閾値を作り直し)"
-  last_session: "2026-08-27(@js-switch 実行。e5 を比較したうえで bge-m3 に確定)"
+  last_code_commit: "b037a17(日本語クエリを英訳してから埋め込む)"
+  last_session: "2026-08-27(bge-m3 へ切替 → e5 を比較して却下 → クエリ翻訳を実装)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
   sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(2 回)"
   status: implemented_verified_and_pushed
-  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 63 passed。停止中は test_api.py が 7 failed / 9 errors"
+  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 97 passed。停止中は test_api.py が 7 failed / 9 errors"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -42,23 +42,33 @@ section readme-start "30秒で再開するには":
   make dev-server                              # http://localhost:8000 に 3,244 製品
   ```
 
-  **2026-08-27 に日本語検索が動くようになった(@js-switch)。** 埋め込みモデルは `BAAI/bge-m3` に切り替え済みで、「ロングヘアの女性キャラ」のような日本語の自由文がそのまま引ける。旧モデルのベクトルは `chroma_db.bge-large-en-v1.5.bak/` に退避してあるので戻すこともできる。
+  **日本語の自由文検索は 2026-08-27 に動くようになった。** 仕組みは 2 段構え:
 
-  **類似度の絶対値がモデルごとに違う点に注意。** bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は `Any / 40%+ / 45%+ / 50%+ / 60%+` に作り直してある(@ui-thresholds)。過去の文書にある「50%+ で 3,236 件」といった目安は bge-large-en-v1.5 時代のもので、いまは当てはまらない。
+  1. 埋め込みモデルを `BAAI/bge-m3` に切り替え(@js-switch)
+  2. **日本語クエリを英訳してから埋め込む**(@jt-impl)。インデックスが英語なので、英語で引くのが一番強い
 
-  **いま何をするかは @next-steps の 1 番。** ただし 1 番は「判断」であって作業ではない。手を動かす前に、何を良しとするかを決める必要がある。
+  「和室の背景」で `Japanese Onsen` が 1 位に来る。英語検索は 1 件も変わっていない。
+
+  **モデルは 2 つ要る。** どちらも `models/` に置き、`git` には入らない。クローンし直した直後は両方エクスポートすること。
+
+  ```bash
+  python export_model.py --model BAAI/bge-m3     # 埋め込み 2,179MB(必須)
+  python export_translation_model.py             # 翻訳 361MB(任意。無ければ日本語が弱くなるだけ)
+  ```
+
+  **類似度の絶対値はモデルごとに違う。** bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は `Any / 40%+ / 45%+ / 50%+ / 60%+`(@ui-thresholds)。過去の文書にある「50%+ で 3,236 件」は bge-large-en-v1.5 時代の値で、いまは当てはまらない。
 
   | やりたいこと | DAZ Studio | 備考 |
   |---|---|---|
-  | 検索の品質を測る | 不要 | `python check_search_quality.py`(サーバ起動が要る) |
+  | 検索の品質を測る | 不要 | `check_search_quality.py` と `check_crosslingual.py`(要サーバ起動) |
   | コンテンツ追加後の再走査 | **必須** | ルートを DAZ Studio から引くため(@roots-source) |
-  | テストを全部通す | **必須** | 起動していれば 63 passed |
+  | テストを全部通す | **必須** | 起動していれば 97 passed |
 
   `ui/src` の submodule は**もう取得できない**(upstream のリポジトリが消えた)。UI を変えるときは `ui/dist` を直接パッチする。手順は @ui-thresholds。
   """
 
 section state "現在の状態":
-  commits: 20
+  commits: 22
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 3244
   indexed_before: 1620
@@ -66,7 +76,7 @@ section state "現在の状態":
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
   pushed: true
-  tests: "63 passed(DAZ Studio 起動時)"
+  tests: "97 passed(DAZ Studio 起動時)"
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
@@ -354,15 +364,16 @@ section repo "リポジトリと環境":
 section open "未着手・判断待ち":
   section next-steps "次の一手(2026-08-27 時点)":
     """
-    1. **「和室の背景」をどうしても改善したいなら @js-translate-query。** 日本語クエリを英訳してから既存モデルに投げる案。英語で引けば `Japanese room` → Japanese Neat Classroom / Japanese Restaurant / XI Japanese Bath と上位が埋まるので、効果はほぼ確実。ただし翻訳手段の依存(ローカル小型モデルか外部 API)が増える。外部 API なら検索語が外部へ出る点も判断材料。**モデル差し替えでの改善は @e5-trial で一度否定されている**
-    2. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
+    1. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
+    2. **UI に `searched_as` を出すか。** `/api/v1/search` は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出すなら `ui/dist` のバンドルを直接パッチする(@ui-thresholds に手順)。翻訳が的外れだったときに利用者が気付けるようになる
     3. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
     4. **退避したベクトルとモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。bge-m3 で確定なら消してよい
+    5. **「中世の鎧を着た戦士」は 6/10 止まり。** 翻訳は `warrior wearing medieval armor` と正しく、英語で引いても上位が割れる。カタログ側に中世ヨーロッパ鎧が乏しいためで、翻訳の問題ではない
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
     chosen: "案 1(BAAI/bge-m3 へ差し替え)"
-    status: done
+    status: "done(モデル切替 @js-switch + クエリ翻訳 @jt-impl の 2 段構え)"
     ui_change_needed: "結果的に必要だった(閾値の目盛り。@ui-thresholds)"
     """
     思い付きの段階のアイデア。「和室の背景」「ロングヘアの女性キャラ」のような日本語の自由文で検索できるようにしたい。現状は英語でしか意図した結果が返らない。
@@ -383,13 +394,68 @@ section open "未着手・判断待ち":
       - **ONNX エクスポートはやり直しになる。** `export_model.py` / `vab_export.py` は `--model` を取るので手順自体はある。`bge-m3` は現行より大きく、**CPU 推論のレイテンシが悪化する可能性がある**。埋め込み時間と検索応答時間を切り替え前後で実測すること
       - **英語検索の品質も変わる。** モデルが変われば類似度の分布ごと変わるので、@bug-search-cap で測った閾値の目安(50%+ で 3,236 件、70%+ で 2 件)は当てにならなくなる。切り替え前に `office` / `dress` / `forest` の件数と応答時間を控えておき、前後で比較する
       """
-    option js-translate-query "案 2 — クエリだけ日英翻訳する":
-      new_dependency: true
+    option js-translate-query "案 2 — クエリだけ日英翻訳する(2026-08-27 に採用・実装)":
+      new_dependency: "sentencepiece(ローカル完結。外部 API は使わない)"
       reindex_needed: false
-      status: "未実装。@e5-trial でモデル差し替え路線が否定されたので、やるならこれ"
+      status: implemented
       """
       インデックスは英語のまま、入力された日本語クエリを英訳してから既存モデルに投げる。`query_model` が `embedding_model` と別設定になっているとおり、クエリ側だけ差し替える余地は元々ある。再インデックス不要で影響範囲が小さい反面、**翻訳のための外部依存(API 呼び出しなり小型モデルなり)が増える**のと、訳語のブレがそのまま検索品質のブレになるのが難点。@js-model-swap が通るならそちらが素直。
       """
+      task jt-impl "実装(2026-08-27)":
+        added_dependency: "sentencepiece のみ"
+        commit: b037a17
+        english_impact: "なし(件数まで同一)"
+        model: staka/fugumt-ja-en
+        model_size_mb: 361
+        overlap_after: 9.0/10
+        overlap_before: 6.17/10
+        status: done
+        """
+        2026-08-27 に実装。**@xl-bench の平均一致が 6.17/10 → 9.0/10 になった。**
+
+        | 日本語クエリ | 翻訳前 | 翻訳後 | 翻訳後の 1 位 |
+        |---|---|---|---|
+        | 和室の背景 | 3/10 | **10/10** | **Japanese Onsen**(以前は 5 位) |
+        | 森の風景 | 7/10 | **10/10** | My Tree Pack |
+        | 学校の教室 | 9/10 | **10/10** | Japanese Neat Classroom |
+        | ロングヘアの女性キャラ | 8/10 | **10/10** | HM Long Hair V for Genesis 9 |
+        | 和室 | 6/10 | **8/10** | HY ClassRoom |
+        | 中世の鎧を着た戦士 | 4/10 | **6/10** | dForce Scarlet Valkyrie Fantasy Armor |
+
+        **英語検索は 1 件も変わらない。** office 50%+ が 7 件、dress が 172 件、forest が 0 件で切り替え前と完全一致。応答時間も 2.3〜2.5 秒のままで、翻訳の約 0.05 秒は埋もれる。**UI の閾値(@ui-thresholds)もそのままでよい** — 日本語クエリのスコアが英語と同じ帯に乗るため。
+
+        実際の翻訳結果:
+
+        ```
+        和室の背景          -> Background of the Japanese-style room
+        和室                -> Japanese-style room
+        畳の部屋            -> tatami room
+        ロングヘアの女性キャラ -> long-haired female character
+        中世の鎧を着た戦士    -> warrior wearing medieval armor
+        森の風景            -> forest landscape
+        ```
+
+        `/api/v1/search` は実際に何を検索したかを `searched_as` で返す(翻訳が起きたときだけ非 null)。
+        """
+        """
+        モデルは **`staka/fugumt-ja-en`**(MarianMT、約 75M)。`export_translation_model.py` で ONNX 化する。
+
+        ```bash
+        python export_translation_model.py     # → models/fugumt-ja-en/(361MB)
+        ```
+
+        **実装を縛った制約が 2 つある。どちらも `vab.spec` 由来。**
+
+        **① torch も transformers も使えない。** `vab.spec` は両方を `excludes` に入れている(ONNX エクスポート専用で、実行時には要らないという設計)。したがって:
+
+        - `transformers.generate()` は torch 依存なので使えず、**greedy デコードを手書き**した。encoder を 1 回、decoder を 1 トークンずつ回して argmax。モデルの config は 12 beam を指定しているが、検索クエリは短い名詞句なので beam search の旨味は小さい
+        - **Marian には fast tokenizer が無い。** `embedding_utils` は `tokenizers.Tokenizer.from_file(tokenizer.json)` で済むが、Marian は `tokenizer.json` を持たず `source.spm` / `target.spm` を積む。そこで **sentencepiece + `vocab.json` で Marian のトークナイズを再実装**した(`MarianPieces`)。`MarianTokenizer` と ID 列が完全一致することはテストで固定してある
+        - 追加した実行時依存は **sentencepiece のみ**(小さく、torch を引かない)。`pyproject.toml` の `local_llm` と `vab.spec` の同梱リストに追加済み
+
+        **② 常に任意機能であること。** モデル未エクスポートでも、翻訳が失敗しても、**元のクエリをそのまま使う**。翻訳器の欠落は検索品質を下げるだけで、検索を失敗させてはならない。日本語文字を含まないクエリはモデルに触れもしないので、英語利用者は 361MB も 0.05 秒も払わない。
+
+        設定は `.env` の `QUERY_TRANSLATION`(`auto` / `on` / `off`、既定 `auto` = モデルがあれば有効)、`QUERY_TRANSLATION_MODEL_ID`、`QUERY_TRANSLATION_MODEL_DIR`。
+        """
     task js-impl "コード側の対応(実装済み・2026-08-27)":
       model_downloaded: true
       reindexed: true
@@ -545,7 +611,7 @@ section open "未着手・判断待ち":
       """
     convention xl-bench "日本語検索の物差し(check_crosslingual.py)":
       added: 2026-08-27
-      baseline_bge_m3: 6.17/10
+      baseline_bge_m3: "6.17/10(翻訳なし)→ 9.0/10(翻訳あり)"
       commit: c72c154
       """
       `check_crosslingual.py`。モデルを替えたときに「日本語検索が良くなったのか」を判定するために作った。
