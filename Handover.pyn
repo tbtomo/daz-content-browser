@@ -5,13 +5,13 @@ meta meta "この文書について":
   indexed_products: 3244
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "ee43acb(成人向け語彙に対応した翻訳バックエンドを追加)"
-  last_session: "2026-08-27(bge-m3 へ切替 → e5 却下 → クエリ翻訳を実装 → Poser ルートの作法を確認)"
+  last_code_commit: "3474433(訳語を点検するツール)"
+  last_session: "2026-08-28(翻訳バックエンドを sugoi + 辞書で確定)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
-  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)"
+  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28"
   status: implemented_verified_and_pushed
   test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 110 passed。停止中は test_api.py が 7 failed / 9 errors"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
@@ -42,33 +42,40 @@ section readme-start "30秒で再開するには":
   make dev-server                              # http://localhost:8000 に 3,244 製品
   ```
 
-  **日本語の自由文検索は 2026-08-27 に動くようになった。** 仕組みは 2 段構え:
+  **日本語の自由文検索は動く。** 仕組みは 3 段:
 
-  1. 埋め込みモデルを `BAAI/bge-m3` に切り替え(@js-switch)
-  2. **日本語クエリを英訳してから埋め込む**(@jt-impl)。インデックスが英語なので、英語で引くのが一番強い
+  1. 埋め込みモデルを `BAAI/bge-m3` に(@js-switch)
+  2. **日本語クエリを英訳してから埋め込む**(@jt-impl)。インデックスが英語なので英語で引くのが一番強い
+  3. 訳語を間違える語は**用語辞書**で直接置き換える(@glossary-ops)
 
-  「和室の背景」で `Japanese Onsen` が 1 位に来る。英語検索は 1 件も変わっていない。
+  「和室」でも「緊縛」でも意図した製品が出る。訳語がおかしいと思ったら `python check_translation.py --search <クエリ>`。
 
-  **モデルは 2 つ要る。** どちらも `models/` に置き、`git` には入らない。クローンし直した直後は両方エクスポートすること。
+  **モデルは 3 つ要る。** どれも `models/` に置き、`git` には入らない。クローンし直した直後は揃えること。
 
   ```bash
-  python export_model.py --model BAAI/bge-m3     # 埋め込み 2,179MB(必須)
-  python export_translation_model.py             # 翻訳 361MB(任意。無ければ日本語が弱くなるだけ)
+  python export_model.py --model BAAI/bge-m3                # 埋め込み 2,179MB(必須)
+  python export_translation_model.py                        # 翻訳 onnx 361MB(必須。フォールバック先)
+  python export_translation_model.py --backend ctranslate2  # 翻訳 sugoi 1.1GB(成人向け語彙。任意)
   ```
 
-  **類似度の絶対値はモデルごとに違う。** bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は `Any / 40%+ / 45%+ / 50%+ / 60%+`(@ui-thresholds)。過去の文書にある「50%+ で 3,236 件」は bge-large-en-v1.5 時代の値で、いまは当てはまらない。
+  `.env` の `QUERY_TRANSLATION_BACKEND` で `onnx` / `ctranslate2` を切り替える。**一般語なら onnx、成人向け語彙なら ctranslate2** というトレードオフで、@xl-bench は 9.0 対 8.33(@nsfw-gap の表)。
+
+  **類似度の絶対値はモデルごとに違う。** bge-m3 では上位ヒットでも 0.46〜0.62 で、UI の Min match は `Any / 40%+ / 45%+ / 50%+ / 60%+`(@ui-thresholds)。過去の文書にある「50%+ で 3,236 件」は bge-large-en-v1.5 時代の値。
 
   | やりたいこと | DAZ Studio | 備考 |
   |---|---|---|
-  | 検索の品質を測る | 不要 | `check_search_quality.py` と `check_crosslingual.py`(要サーバ起動) |
+  | 訳語を点検する | 不要 | `check_translation.py`(`--search` はサーバ起動が要る) |
+  | 検索の品質を測る | 不要 | `check_search_quality.py` と `check_crosslingual.py`(要サーバ) |
   | コンテンツ追加後の再走査 | **必須** | ルートを DAZ Studio から引くため(@roots-source) |
-  | テストを全部通す | **必須** | 起動していれば 97 passed |
+  | テストを全部通す | **必須** | 起動していれば 110 passed |
 
   `ui/src` の submodule は**もう取得できない**(upstream のリポジトリが消えた)。UI を変えるときは `ui/dist` を直接パッチする。手順は @ui-thresholds。
+
+  **UI 側で握り潰される不具合に注意。** ベンチはすべて API を直接叩くので、UI のゲートは素通りする(@ui-thresholds の最小文字数の件)。
   """
 
 section state "現在の状態":
-  commits: 25
+  commits: 27
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 3244
   indexed_before: 1620
@@ -450,11 +457,11 @@ section repo "リポジトリと環境":
 section open "未着手・判断待ち":
   section next-steps "次の一手(2026-08-27 時点)":
     """
-    1. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
-    2. **UI に `searched_as` を出すか。** `/api/v1/search` は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出すなら `ui/dist` のバンドルを直接パッチする(@ui-thresholds に手順)。翻訳が的外れだったときに利用者が気付けるようになる
-    3. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
-    4. **退避したベクトルとモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。bge-m3 で確定なら消してよい
-    5. **「中世の鎧を着た戦士」は 6/10 止まり。** 翻訳は `warrior wearing medieval armor` と正しく、英語で引いても上位が割れる。カタログ側に中世ヨーロッパ鎧が乏しいためで、翻訳の問題ではない
+    1. **日本語で変な結果が出たら @glossary-ops の手順。** `check_translation.py --search <クエリ>` で訳語と結果を見て、訳語が悪ければ `query_glossary.ja-en.json` に 1 行足す。**モデルを増やすより速くて確実**というのが @e5-trial と @llm-trial 2 回の結論
+    2. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
+    3. **UI に `searched_as` を出すか。** API は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出せば翻訳の外しに利用者自身が気付ける。手順は @ui-thresholds
+    4. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
+    5. **退避したベクトルと使わないモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。現行構成で確定なら消してよい。`models/fugumt-ja-en/`(361MB)は sugoi のフォールバック先なので残すこと
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
@@ -731,6 +738,7 @@ section open "未着手・判断待ち":
     issue nsfw-gap "成人向け語彙が日本語で引けなかった(2026-08-27 解決)":
       cause: "翻訳器の学習データが当該領域をフィルタしている"
       commit: ee43acb
+      final: "sugoi + 用語辞書で確定。LLM 案は @llm-trial で不採用"
       index_at_fault: false
       status: resolved
       """
@@ -808,6 +816,50 @@ section open "未着手・判断待ち":
       上位ヒット自体は変わらないので体感差は小さいが、数字としては下がる。**成人向け語彙を取るか一般語の精度を取るかのトレードオフ**で、`.env` の 1 行で行き来できる。
 
       **バックエンドは互いを補う。** 設定した側のモデルが無ければもう一方に落ち、両方無ければ従来どおり原文のまま検索する。翻訳器の欠落が検索を失敗させることはない。
+      """
+    task llm-trial "LLM(Qwen)を翻訳器にする案を測って不採用(2026-08-28)":
+      latency_ms: 192-356
+      model: "Qwen2.5-3B-Instruct-abliterated Q4_K_M"
+      status: rejected
+      verdict: "専用 NMT に勝てず、サイズと遅延だけ増える"
+      vocab_score: 22/30
+      """
+      **LLM を翻訳器にする案を実測し、採用しなかった。** 「システムプロンプトで翻訳ツールとして使えば、成人向け語彙と一般語の両方を一度に解けるのでは」という発想で、`Qwen2.5-3B-Instruct-abliterated`(Q4_K_M, 1.9GB)を `llama-cpp-python` で測った。プレビルド CPU ホイールがあるので torch は不要で、制約自体は満たせる。
+
+      | | 語彙 30 語 | 1 クエリ | サイズ |
+      |---|---|---|---|
+      | fugumt (onnx) | 22/30 | **30 ms** | 360 MB |
+      | **sugoi (採用)** | **23/30** | 130 ms | 1.1 GB |
+      | Qwen2.5-3B abliterated | 22/30 | 192〜356 ms | 1.9 GB |
+
+      **プロンプト設計で結果が大きく動く。** 初回は「8 語以内」と指示したせいで過剰圧縮が起き、`和室 → room`(日本が消える)、`中世の鎧を着た戦士 → century warrior`(鎧が消える)、さらに `沖縄の風景 → fujianseutro landscape`、`猿ぐつわ → solex` という幻覚まで出た。ルールを詳しくして few-shot を 5 例に増やすと一般クエリは改善したが、**改善した語の多くは few-shot に入れた語**なので汎化とは言い切れない。
+
+      **決定打は指示追従の弱さ。** few-shot に「緊縛 = bondage」を明示しても `binder` と答えた。外来語でも `ランジェリー → bras`、`ハーネス → halter` と NMT 2 つに負ける。翻訳という狭いタスクでは、専用の NMT に 3B の汎用モデルは勝てなかった。
+
+      4B にすれば多少上がるだろうが、2.5GB・300〜500ms と引き換えに 1 点差を逆転できるかは疑わしく、打ち切った。`llama-cpp-python` と GGUF は削除済み。
+
+      **画像生成用モデルの流用は成立しない。** civitai の「Uncensored Qwen3 4B (LLM for Z-Image & Flux4B)」は名前に LLM とあるが実体は **Trained Text Encoder** で、テキストを生成しない(プロンプトをベクトル化する部品)。近縁の `qwen3-4b-Z-Image-Engineer` は生成モデルだが `prompt-enhancer` タグのとおり**短い着想を長大なプロンプトに膨らませる**訓練で、簡潔な翻訳とは逆方向。
+      """
+    convention glossary-ops "訳語がおかしいときの手順":
+      commit: "3474433"
+      glossary: query_glossary.ja-en.json
+      tool: check_translation.py
+      """
+      **辞書を育てるのが運用の中心。** モデルを増やすより、外した語を 1 行足す方が速く確実、というのが @llm-trial までの結論。
+
+      ```bash
+      python check_translation.py 緊縛 鞭 猿ぐつわ     # 何に訳されているか
+      python check_translation.py --search 和室        # その英語が何を引くか(要サーバ)
+      python check_translation.py --glossary           # 辞書の全エントリを再確認
+      ```
+
+      日本語で変な結果が出たときの手順:
+
+      1. `check_translation.py --search <クエリ>` で訳語と結果を見る
+      2. 訳語が的外れなら `query_glossary.ja-en.json` に追加。**カタログが実際に使っている英語**にすること(`enriched_products.db` を grep して確認)
+      3. 訳語が妥当なのに結果が悪いなら、翻訳ではなく**カタログにその製品が無い**可能性(@nsfw-gap の「和室」がその例)
+
+      `--glossary` は、モデル側が対応できるようになった語を見つけるのにも使う。エントリは少ないほどよい。
       """
   section pending "判断待ち":
     """
