@@ -5,7 +5,7 @@ meta meta "この文書について":
   indexed_products: 3244
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "3474433(訳語を点検するツール)"
+  last_code_commit: "603764c(設定画面が実際のモデルと食い違わないように)"
   last_session: "2026-08-28(翻訳バックエンドを sugoi + 辞書で確定)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
@@ -13,7 +13,7 @@ meta meta "この文書について":
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
   sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28"
   status: implemented_verified_and_pushed
-  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 110 passed。停止中は test_api.py が 7 failed / 9 errors"
+  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 113 passed。停止中は test_api.py が落ちる"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -75,7 +75,7 @@ section readme-start "30秒で再開するには":
   """
 
 section state "現在の状態":
-  commits: 27
+  commits: 29
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 3244
   indexed_before: 1620
@@ -83,7 +83,7 @@ section state "現在の状態":
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
   pushed: true
-  tests: "110 passed(DAZ Studio 起動時)"
+  tests: "113 passed(DAZ Studio 起動時)"
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
@@ -452,6 +452,33 @@ section repo "リポジトリと環境":
     - 散文中の `@id` はグラフの辺。存在しない ID を指すと `check` で落ちる
     - 散文に Markdown 見出し(`#`)は書けない。節にしたいものは子ノードにする
     - 属性値に入れ子は書けない。構造が要るなら子ノード
+    """
+  convention settings-truth "設定画面のモデル名は表示専用":
+    commit: 603764c
+    fixed: 2026-08-28
+    writable: false
+    """
+    `/api/v1/settings` の `embedding_model` / `query_model` は**表示専用**で、実際に使われるモデルは `.env` の `EMBEDDING_MODEL_ID`(`embedding_utils` が初回使用時に解決)で決まる。表示が `BAAI/bge-m3` なら、それが本当に検索に答えているモデル。
+
+    **ただし UI はこの 2 つを編集可能なテキスト入力として描画する。** 2026-08-28 以前は書き換えると `settings.json` に保存され、以後 `/settings` が**実態と違うモデル名を返し続けた**。モデルの変更は 3,244 件の再埋め込みを伴うので runtime では変えようがなく、保存できることに意味が無かった。
+
+    修正: PUT からこの 2 キーを落とし、古い `settings.json` に残っていても読み込み時に既定値で上書きする。UI 側はラベルに `(read-only, set by .env)` を足した。**入力欄自体は編集可能なまま**だが(フォームは minify 済みバンドル内にあり `ui/src` は失われている)、サーバが受け付けないので実害は無く、保存すると真の値に戻る。
+
+    **併せて翻訳の状態も返すようにした。** 検索は「埋め込み」と「翻訳」の 2 箇所で外れうるのに、設定画面は前者しか出していなかった。
+
+    ```json
+    {
+      "embedding_model": "BAAI/bge-m3",
+      "translation_enabled": true,
+      "translation_backend": "ctranslate2",
+      "translation_model": "entai2965/sugoi-v4-ja-en-ctranslate2",
+      "translation_glossary_terms": 6
+    }
+    ```
+
+    ビルド済み UI はこれらを描画しないので、見るなら `curl` か `check_translation.py`(@glossary-ops)。
+
+    **モデルを変えるには** `.env` の `EMBEDDING_MODEL_ID` を書き換え、`chroma_db/` を作り直して再埋め込みする(@js-switch)。設定画面からはできない。
     """
 
 section open "未着手・判断待ち":
