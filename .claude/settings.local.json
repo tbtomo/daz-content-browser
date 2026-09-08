@@ -17,7 +17,8 @@
       "Bash(gh repo *)",
       "Bash(git remote *)",
       "Bash(gh pr create --title 'Refactor to SQLite index, add DAZ Script Server integration, ship React UI' --body ' *)",
-      "Bash(git commit -m 'Update Claude project settings after remote migration *)"
+      "Bash(git commit -m 'Update Claude project settings after remote migration *)",
+      "Bash(.venv/Scripts/python *)"
     ]
   }
 }
