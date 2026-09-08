@@ -2,16 +2,16 @@ meta meta "この文書について":
   branch: feature/content-library-indexing
   canonical: "このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない"
   embedding_model_note: "BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯"
-  indexed_products: 3248
+  indexed_products: 4566
   indexed_products_before: 1620
   language: ja
   last_code_commit: "603764c(設定画面が実際のモデルと食い違わないように)"
-  last_session: "2026-08-28(翻訳を sugoi + 辞書で確定、設定画面の不整合を修正、文書を棚卸し)"
+  last_session: "2026-09-08(コンテンツルート追加に伴う再走査、collect_untracked_dirs の実害測定)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
-  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28"
+  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28 / 09-08"
   status: implemented_verified_and_pushed
   test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 113 passed。停止中は test_api.py が落ちる"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
@@ -45,7 +45,7 @@ section readme-start "30秒で再開するには":
   cd D:\OtherApps\daz-content-browser
   git status                                   # feature/content-library-indexing / clean のはず
   .venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
-  make dev-server                              # http://localhost:8000 に 3,248 製品(増減する)
+  make dev-server                              # http://localhost:8000 に 4,566 製品(増減する)
   ```
 
   **日本語の自由文検索は動く。** 仕組みは 3 段:
@@ -82,10 +82,11 @@ section readme-start "30秒で再開するには":
 
 section state "現在の状態":
   commits: 37
+  content_roots: "9(dedupe 後。2026-09-08 に 4 本から増えた @roots-upi)"
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
-  indexed: 3248
+  indexed: 4566
   indexed_before: 1620
-  indexed_note: "2026-08-28 時点。買い足しや Update で動くので curl /api/v1/info が正"
+  indexed_note: "2026-09-08 時点。買い足しや Update で動くので curl /api/v1/info が正"
   newly_found: 1624
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
@@ -103,7 +104,7 @@ section state "現在の状態":
   | 埋め込みモデル | `BAAI/bge-m3` | 2026-08-27 に英語専用モデルから切替(@js-switch) |
   | 翻訳バックエンド | `sugoi-v4`(ctranslate2) | 用語辞書 6 語つき。フォールバックに `fugumt`(onnx) |
 
-  **製品数は動く。** DAZ ストアで買い足せば増えるし、UI の Update ボタンや `vab.py load` を回すたびに変わる(実際 08-28 に 3,244 → 3,248 になった)。文書中の数字は書いた時点のもので、現在値は `curl -s http://localhost:8000/api/v1/info` が正しい。
+  **製品数は動く。** DAZ ストアで買い足せば増えるし、UI の Update ボタンや `vab.py load` を回すたびに変わる(実際 08-28 に 3,244 → 3,248 になった)。**09-08 セッションの開始時点で既に 4,503 件あった** — 文書に記録の無いあいだに DAZ Studio 側でコンテンツが増え、cms-local が 43 → 845 に伸びている。文書中の数字は書いた時点のもので、現在値は `curl -s http://localhost:8000/api/v1/info` が正しい。
 
   作業ツリーはクリーン、stash なし。
 
@@ -302,6 +303,33 @@ section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
     現在の Poser Formats は 7 本(`My Poser Library` とその子 4 本、DAZ ライブラリ 2 本)。親エントリは冗長だが無害。
 
     **VAB の走査対象は変わらない。** `resolve_content_roots()` の和集合は 12 件になるが、`dedupe_roots()` 後は従来どおり 4 本(`My DAZ 3D Library` / `My Poser Library` / `Studio\My Library` / OneDrive)。DAZ ライブラリ 2 本は元から DAZ Studio Formats と CMS 経由で走査対象だった。
+    """
+  task roots-upi "UniversalProductInstaller をルートに追加(2026-09-08)":
+    added: 2026-09-08
+    code_changed: no
+    indexed_after: 4566
+    indexed_before: 4503
+    new_products: 63
+    roots_after: 9
+    roots_before: 4
+    status: done
+    """
+    利用者が DAZ Studio の Content Directory Manager で Current Directories を変更した。`resolve_content_roots()` が返すルートは dedupe 後 **4 本から 9 本**に増えている。コード変更は無い。
+
+    | ルート | 状態 |
+    |---|---|
+    | `D:\DAZ 3D\UniversalProductInstaller` | **新規**。走査対象 60,687 ファイル |
+    | `C:\Users\tabby\OneDrive\...\Matronius\UniversalProductInstaller` | **新規**だが空(0 ファイル)。走査 1 回分の無駄で、実害は無い |
+    | `C:\Users\Public\Documents\My DAZ 3D Library` | 従来どおり(ジャンクション。解決先は `D:\DAZ 3D\My DAZ 3D Library` @roots-junction) |
+    | `D:\Poser\My Poser Library\` 配下 4 本 | 従来どおり(@poser-roots の作法どおり製品フォルダ単位)。**親は Current Directories から外れた**が、VAB の拾う件数は変わらない |
+
+    手順は @resume の 6 のとおり `python vab.py load --phase scan --all` → `--phase embed`。結果は filesystem 製品 2,002 → **2,065**(+63)、合計 4,503 → **4,566**。埋め込みはログの `model=BAAI/bge-m3 pooling=cls` で正しいモデルが使われたことを確認済み(@js-impl の遅延解決が効いている)。ChromaDB も 4,566 件で SQLite と一致。
+    """
+    """
+    **60,687 ファイルに対して製品が 63 件しか増えないのは正常。** UPI が入れた製品の大半は CMS に登録済みで、`cms-local` / `daz-store` 側で既に拾えている。filesystem 側に残るのは CMS が知らない分だけ。この差が @mixed-dirs の「捨てすぎ」ではないことは実測で確認した。
+    """
+    """
+    **Content Directory Manager から外したディレクトリは、それだけでは走査対象から消えない。** `resolve_content_roots()` は CMS のベースパスと DAZ Studio の設定の**和集合**を取るので(@roots-source)、CMS に `tblBasePath` の行が残っていれば走査は続く。今回外れた `D:\Poser\My Poser Library` は入れ子として `dedupe_roots()` に落とされるため影響が無かったが、ルートを整理したつもりが減っていない、という食い違いはここから起きる。
     """
 
 section problem "何が問題だったか":
@@ -509,10 +537,10 @@ section repo "リポジトリと環境":
     """
 
 section open "未着手・判断待ち":
-  section next-steps "次の一手(2026-08-27 時点)":
+  section next-steps "次の一手(2026-09-08 時点)":
     """
     1. **日本語で変な結果が出たら @glossary-ops の手順。** `check_translation.py --search <クエリ>` で訳語と結果を見て、訳語が悪ければ `query_glossary.ja-en.json` に 1 行足す。**モデルを増やすより速くて確実**というのが @e5-trial と @llm-trial 2 回の結論
-    2. **`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理を見直すか判断する。** 1 ファイルでも CMS 登録があると同じディレクトリの未登録ファイルが道連れになる。実害が出ているかは未測定
+    2. ~~`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理~~ **2026-09-08 に測定して決着。実害なし、現状維持(@mixed-dirs)。**フィルタを外すと既存製品の重複が 45 件生えるので、外す方が悪い
     3. **UI に `searched_as` を出すか。** API は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出せば翻訳の外しに利用者自身が気付ける。手順は @ui-thresholds
     4. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
     5. **退避したベクトルと使わないモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。現行構成で確定なら消してよい。`models/fugumt-ja-en/`(361MB)は sugoi のフォールバック先なので残すこと
@@ -927,7 +955,72 @@ section open "未着手・判断待ち":
     - **UI の Update ボタンが `force` をどう送っているか未確認。** 差分実行(`force: false`)で動くことは API 経由で確認済み
     - **`ui/src` の submodule はもう取得できない。** upstream の `bmf-daz-content-browser-ui` が消えている(`Repository not found`)。以前ここには「submodule を取得すればフィルタを追加できる」と書いてあったが、**それはできない**。UI を変えるなら `ui/dist` のバンドルを直接パッチする(@ui-thresholds に手順)。`source` は API が返しているので「Content Library のみ表示」のようなフィルタ自体は作れる
     - **検索は毎回ほぼ全製品を 1 応答で返す。** 候補プールを 5000 に上げた結果、Min match: Any では 3,244 件・1.84MB が返る(約 2.5 秒)。現状の規模では問題ないが、製品数が数万に増えるとここが先に苦しくなる。対処はサーバ側ページングだが、`ui/src` が失われた以上 UI 側の対応はバンドルのパッチになる
+    - **CMS 登録済みファイルと同居する未登録ファイルは、どの製品の一覧にも出ない。** 444 ファイル・26 製品が該当する(@mixed-dirs)。製品そのものは索引にあるので検索では見つかり、出てこないのは Poser 版と対になる DAZ Studio 版マテリアルなど。実測のうえで現状維持と判断した
     - **bge-m3 は日本固有の語彙が弱い。** 「和室」が効かず、`Japanese Onsen` が 1 位から 5 位に落ちた(@js-switch)
+    """
+  task mixed-dirs "collect_untracked_dirs() の「捨てすぎ」を測った(2026-09-08・実害なし)":
+    affected_indexed_products: 26
+    code_changed: no
+    discarded_dirs: 80
+    discarded_files: 444
+    discarded_share: "全未登録ファイルの 0.4%"
+    measured: 2026-09-08
+    products_if_filter_removed: "+45(すべて既存製品の重複)"
+    status: measured
+    verdict: keep_as_is
+    """
+    @next-steps の 2 番として「実害が出ているかは未測定」と残っていた件。**測った結果、実害は無く、フィルタを外す方が悪い。** 現状維持とする。
+
+    対象は `collect_untracked_dirs()` の最後の 1 行。
+
+    ```python
+    return {d: v for d, v in stats.items() if v["untracked"] > 0 and v["tracked"] == 0}
+    ```
+
+    同じディレクトリに CMS 登録済みファイルが 1 つでもあると、そこの未登録ファイルは全部落ちる。全 9 ルート・325,145 ファイルを歩き、捨てる前の統計をそのまま取った。
+
+    | | 件数 |
+    |---|---|
+    | 総ディレクトリ | 24,545 |
+    | 未登録のみ(採用) | 8,588 |
+    | **混在(丸ごと捨てられる)** | **80** |
+    | 登録済みのみ | 15,877 |
+    | 採用される未登録ファイル | 101,059 |
+    | **捨てられる未登録ファイル** | **444(全未登録の 0.4%)** |
+
+    捨てられる 444 件の内訳は `.duf` 438 / `.mt5` 6。
+    """
+    """
+    **444 件すべてが、既に索引にある製品のディレクトリに属していた。** CMS の `content` × `product` を引いて所有製品を特定したところ、「CMS に所有製品が無い」も「所有製品が索引に無い」も **0 件**。つまり**この処理のせいで見つからなくなった製品は 1 つも無い**。
+
+    正体は影響を受ける製品名にはっきり出る。
+
+    ```
+    138 files  [daz-store] Genesis Starter Essentials PoserCF
+    101 files  [daz-store] Genesis 2 Male Starter Essentials PoserCF
+     54 files  [daz-store] Genesis 2 Female Starter Essentials PoserCF
+     35 files  [cms-local] Back Alley
+     33 files  [daz-store] Advanced Pussy
+    ```
+
+    **大半は Poser Companion File 製品の DAZ Studio 版ツイン。** `Runtime\Libraries\Materials\DAZ Genesis 2 Male\` に `Phillip All Hairy.mc6`(CMS 登録済み)と `Phillip All Hairy.duf`(未登録)が並ぶ。tracked と untracked の件数が 39 対 39、25 対 25 とぴったり一致するのがその証拠。
+    """
+    """
+    **フィルタを外すと製品が 45 件増えるが、すべて重複。** 同じデータでグルーピングまで通した比較。
+
+    | | 製品数 |
+    |---|---|
+    | 現行(混在ディレクトリを捨てる) | 1,985 |
+    | フィルタを外した場合 | 2,030(**+45**) |
+
+    増える 45 件は `Charm Hair` / `Newport Outfit` / `Sci-Fi Siren Outfit` / `Surf's Up Outfit and Board` など、既存の daz-store / cms-local 製品と同じもの。新しいコンテンツが見えるのではなく、**既存製品を影武者のように複製した `fs-` 製品が生える**だけになる。この処理は「捨てすぎ」ではなく、二重登録を防ぐために正しく効いていた。
+    """
+    """
+    **残った影響。** 該当 26 製品のファイル一覧に `.duf` 版が出てこない。`get_asset_files_by_sku()` は CMS を引くので、CMS が知らない `.duf` はfs 走査側・CMS 側のどちらの経路からも列挙されない。実用上は Poser 版と DS 版の同じマテリアルなので、片方が出れば用は足りる。
+
+    **完全を期すなら**、フィルタを外すのではなく「混在ディレクトリの未登録ファイルを、新規 `fs-` 製品にせず所有 CMS 製品の追加ファイルとして紐づける」形になる。444 ファイル・26 製品のためにパイプラインへ経路を 1 本足す価値があるかは微妙で、今回は見送った。
+
+    **再測定するなら** 走査を 1 回まわして `collect_untracked_dirs()` のフィルタ前の統計を取り、混在ディレクトリの相対パスで `dzcontent.content` × `dzcontent.product` を引いて所有製品の SKU が `enriched_products` にあるかを見ればよい。所要は walk が約 1 分。
     """
 
 section resume "再開手順":
