@@ -550,7 +550,7 @@ section open "未着手・判断待ち":
     2. ~~`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理~~ **2026-09-08 に測定して決着。実害なし、現状維持(@mixed-dirs)。**フィルタを外すと既存製品の重複が 45 件生えるので、外す方が悪い
     3. ~~UI に `searched_as` を出すか~~ **2026-10-10 に実装。** 検索欄の下に語ごとの訳語を出している(@ui-thresholds の 5 回目)
     4. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
-    5. **退避したベクトルと使わないモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。現行構成で確定なら消してよい。`models/fugumt-ja-en/`(361MB)は sugoi のフォールバック先なので残すこと
+    5. ~~退避したベクトルと使わないモデルを残すか捨てるか~~ **2026-10-10 に利用者の指示で削除。** `chroma_db.*.bak/` 2 つと `models/bge-large-en-v1.5/`・`models/multilingual-e5-large/` で約 3.5GB。`models/` に残るのは bge-m3 / fugumt-ja-en / sugoi-v4-ja-en-ctranslate2 の 3 つで、fugumt は sugoi のフォールバック兼ローマ字化の聞き直し先(@sugoi-romaji)なので消さないこと
     """
   idea japanese-search "今後やりたいこと:日本語の自由文で検索する":
     blocker: "埋め込みモデル BAAI/bge-large-en-v1.5 が英語専用"
@@ -670,7 +670,7 @@ section open "未着手・判断待ち":
       model_size_mb: 2179
       rescan_needed: false
       rescrape_needed: false
-      rollback: "chroma_db.bge-large-en-v1.5.bak/ を chroma_db/ に戻し .env をコメントアウト"
+      rollback: "旧ベクトルは 2026-10-10 に削除済み。旧モデルを export し直して再埋め込みする"
       """
       2026-08-27 に実行し、**日本語の自由文検索は動くようになった**。所要は実測でモデル DL・ONNX 化が十数分、再埋め込みが 3,244 件で 48 秒。
 
@@ -685,7 +685,7 @@ section open "未着手・判断待ち":
 
       **懸念していた CPU 推論の悪化は起きなかった。** 検索応答は約 2.3〜2.5 秒で切り替え前と同じ。@js-model-swap に書いた「bge-m3 は大きいので遅くなる可能性」は、この規模では顕在化しなかった。
 
-      旧ベクトルは `chroma_db.bge-large-en-v1.5.bak/`(31MB、gitignore 済み)に残してある。戻すなら `.env` の `EMBEDDING_MODEL_ID` をコメントアウトし、このディレクトリを `chroma_db/` に戻すだけでよい(再埋め込み不要)。
+      旧ベクトル `chroma_db.bge-large-en-v1.5.bak/` と旧モデルは **2026-10-10 に削除した**(@next-steps の 5)。bge-large-en-v1.5 に戻すなら、`python export_model.py --model BAAI/bge-large-en-v1.5` → `.env` の `EMBEDDING_MODEL_ID` を書き換え → `chroma_db/` を作り直して `python vab.py load --phase embed` と、切り替えと同じ手順を逆向きに踏む(再埋め込みは 1 分弱)。UI の Min match の目盛りも戻す必要がある(@ui-thresholds)。
       """
       """
       **日本語クエリの上位結果は明確に良くなった。**
