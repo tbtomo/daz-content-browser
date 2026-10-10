@@ -6,11 +6,12 @@ meta meta "この文書について":
   indexed_products_before: 1620
   language: ja
   last_code_commit: "9e348a6(検索欄の下に語ごとの訳語を表示)"
-  last_session: "2026-10-10(複数語の AND 検索、sugoi のローマ字化対策)"
+  last_session: "2026-10-10(複数語の AND 検索、sugoi のローマ字化対策、検索欄に使い方と訳語を表示、未使用モデルの削除)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
+  pyn_local: "D:\\OtherApps\\pyn(clone 済み。そこを cwd にして python -m pyn …。Windows では PYTHONIOENCODING=utf-8 を付ける)"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
-  resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
+  resume_entry_point: "@readme-start を読む → @next-steps の「直近のセッション」と「次に着手できること」"
   sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28 / 09-08 / 10-10"
   status: implemented_verified_and_pushed
   test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 155 passed。停止中は test_api.py が落ちる"
@@ -45,7 +46,7 @@ section readme-start "30秒で再開するには":
   cd D:\OtherApps\daz-content-browser
   git status                                   # feature/content-library-indexing / clean のはず
   .venv\Scripts\python -m pytest tests\ -q     # DAZ Studio 停止中は test_api.py が落ちる(既知)
-  make dev-server                              # http://localhost:8000 に 4,566 製品(増減する)
+  make dev-server                              # または run.bat をダブルクリック。http://localhost:8000 に 4,601 製品(増減する)
   ```
 
   **日本語の自由文検索は動く。** 仕組みは 3 段:
@@ -515,6 +516,19 @@ section repo "リポジトリと環境":
     - 散文に Markdown 見出し(`#`)は書けない。節にしたいものは子ノードにする
     - 属性値に入れ子は書けない。構造が要るなら子ノード
     """
+    """
+    **このマシンでは `D:\OtherApps\pyn` に clone 済み**(2026-10-10 時点)。そこを cwd にして実行する。
+
+    ```bash
+    cd D:\OtherApps\pyn
+    set PYTHONIOENCODING=utf-8      # Git Bash なら PYTHONIOENCODING=utf-8 python -m pyn …
+    python -m pyn check D:\OtherApps\daz-content-browser\Handover.pyn
+    ```
+
+    - **`PYTHONIOENCODING=utf-8` が要る。** 無いと `pyn json` などの標準出力が cp932 で `UnicodeEncodeError` になる
+    - **`--dry-run` は `id` サブコマンド専用で、`patch` では黙って無視される。** 試し打ちのつもりで付けても本当に書き換わる。パッチは全か無かなので、失敗すれば原本は変わらない
+    - 長い散文の差し替えは、`pyn json` で現在の散文を取り出し、Python で文字列置換して `set_prose` の ops を組むのが確実(置換対象が 1 箇所だけであることを assert しておく)
+    """
   convention settings-truth "設定画面のモデル名は表示専用":
     commit: 603764c
     fixed: 2026-08-28
@@ -545,6 +559,22 @@ section repo "リポジトリと環境":
 
 section open "未着手・判断待ち":
   section next-steps "次の一手(2026-10-10 時点)":
+    """
+    **直近のセッション(2026-10-10)でやったこと。** すべて fork に push 済み、作業ツリーはクリーン。
+
+    - 複数語の **AND 検索**(@and-search)。スペース区切り、スペースを含む語は `""` で囲む
+    - sugoi が短い語をローマ字にする問題に、もう一方の翻訳器で聞き直す対策(@sugoi-romaji)
+    - WebUI の検索欄の下に **AND 検索の使い方**と**語ごとの訳語**を常時表示(@ui-thresholds の 4・5 回目のパッチ)
+    - 使っていないモデルと退避ベクトルを削除(約 3.5GB。下の 5 番)
+
+    利用者は `run.bat` で起動して新機能を確認済み(良好)。
+
+    **次に着手できること。** 下の番号付きリストは経緯の記録で、コード作業として残っているものは無い。残りは利用者の判断待ちの 2 件(@pending:上流への PR、fork に残る上流ブランチ 7 本の削除)。それ以外に手を付けるなら候補は:
+
+    - **AND 検索の調整** — 効きが強すぎ/弱すぎと言われたら `.env` の `AND_TERM_FRACTION`(既定 0.25)。測った根拠は @and-search の表
+    - **訳語の外れ** — 検索欄の下の「訳語:」を見て、外れていれば @glossary-ops の手順で辞書に 1 行足す
+    - **製品数が数万に増えたら** サーバ側ページング(@limits)
+    """
     """
     1. **日本語で変な結果が出たら @glossary-ops の手順。** 単語がローマ字(Aka / Mori 等)になる件は 2026-10-10 から自動で聞き直す(@sugoi-romaji)。 `check_translation.py --search <クエリ>` で訳語と結果を見て、訳語が悪ければ `query_glossary.ja-en.json` に 1 行足す。**モデルを増やすより速くて確実**というのが @e5-trial と @llm-trial 2 回の結論
     2. ~~`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理~~ **2026-09-08 に測定して決着。実害なし、現状維持(@mixed-dirs)。**フィルタを外すと既存製品の重複が 45 件生えるので、外す方が悪い
@@ -1120,7 +1150,7 @@ task and-search "複数語の AND 検索(2026-10-10)":
 
 section resume "再開手順":
   """
-  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(2026-08-28 時点で origin と同期済み)
+  1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(2026-10-10 時点で origin と同期済み)
 
   2. **DAZ Studio を起動するかどうかで、その日にできることが決まる。** 停止中は `get_content_roots()` も `get_all_content_paths()` も引けないので、**コンテンツを追加したときの再走査ができない**(@roots-source)。`tests/test_api.py` が落ちるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237`)で、コードの不具合ではない。起動していれば 155 passed。検索まわりの作業だけなら DAZ Studio は不要
 
@@ -1132,7 +1162,7 @@ section resume "再開手順":
      python export_translation_model.py --backend ctranslate2  # 翻訳 sugoi 1.1GB(成人向け語彙)
      ```
 
-  4. `make dev-server` でサーバ起動。`http://localhost:8000` に製品が並べば前回の状態を再現できている(08-28 時点で 3,248。買い足せば増える)
+  4. `make dev-server`(または `run.bat` をダブルクリック)でサーバ起動。`http://localhost:8000` に製品が並べば前回の状態を再現できている(2026-10-10 時点で 4,601。買い足せば増える)。止めるときはそのウィンドウで Ctrl+C。**Update の途中でウィンドウを × で閉じると ChromaDB が壊れることがある**。`src/` を変えたら再起動が要る(自動リロードしない)。`ui/dist` だけの変更ならブラウザの再読み込み(Ctrl+F5)で足りる
 
   5. **健全性チェックは 3 つ。** どれもサーバ起動が要る
 
@@ -1148,7 +1178,7 @@ section resume "再開手順":
 
   7. **この引継ぎ文書を書き換えるときは `Handover.pyn` を直す。** `Handover.html` は生成物なので手で編集しない。pyn 本体はこのリポジトリに入っていないので、触る前に clone すること(@doc-format)
 
-  8. 続きから着手するなら @next-steps の 1 番から
+  8. 続きから着手するなら @next-steps の冒頭(直近のセッションと、次に着手できること)から
   """
 
 section commands "コマンド早見表":
