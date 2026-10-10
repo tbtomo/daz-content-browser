@@ -583,6 +583,13 @@ def run_search(request: UISearchRequest):
         # What was actually embedded, when a Japanese query was translated
         # first. Absent for queries used verbatim.
         "searched_as": raw.get("query") if raw.get("translated_from") else None,
+        # Term by term, only the terms that were translated: lets the UI show
+        # '和室 → Japanese-style room' next to the box the user typed into.
+        "translations": [
+            {"term": term, "english": english}
+            for term, english in zip(raw.get("source_terms", []), raw.get("terms", []))
+            if english != term
+        ],
         "took_ms": raw.get("took_ms", 0),
     }
 

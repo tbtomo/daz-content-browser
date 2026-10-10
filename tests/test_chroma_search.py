@@ -137,3 +137,8 @@ class TestAndSearch:
     def test_untranslated_query_reports_no_translation(self, db):
         result = db.search("red dress", limit=10, max_results=10)
         assert result["translated_from"] is None
+
+    def test_source_terms_line_up_with_the_embedded_ones(self, db):
+        result = db.search("赤　dress", limit=10, max_results=10)
+        assert result["source_terms"] == ["赤", "dress"]
+        assert result["terms"] == ["red", "dress"]

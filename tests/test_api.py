@@ -120,3 +120,20 @@ def test_daz_studio_status(client):
     assert r.status_code == 200
     body = r.json()
     assert "plugin_detected" in body
+
+
+def test_search_reports_each_translated_term(client, monkeypatch):
+    """The UI shows '和室 → Japanese-style room' under the search box from this."""
+    from unittest.mock import MagicMock
+    import server
+
+    manager = MagicMock()
+    manager.search.return_value = {
+        "results": [], "took_ms": 0,
+        "translated_from": "和室 dress", "query": '"Japanese-style room" dress',
+        "source_terms": ["和室", "dress"], "terms": ["Japanese-style room", "dress"],
+    }
+    monkeypatch.setattr(server, "APP_MODE", "production")
+    monkeypatch.setattr(server, "chroma_db_manager", manager)
+    body = client.post("/api/v1/search", json={"query": "和室 dress"}).json()
+    assert body["translations"] == [{"term": "和室", "english": "Japanese-style room"}]

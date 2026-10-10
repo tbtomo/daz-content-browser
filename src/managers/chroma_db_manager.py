@@ -320,6 +320,7 @@ class ChromaDbManager:
             # What was embedded, quoted so it reads back as the same AND query.
             "query": join_search_terms(embedded_terms) if len(terms) > 1 else embedded_terms[0],
             "terms": embedded_terms,
+            "source_terms": terms,
         }
 
     def _catalog_words(self) -> set:
