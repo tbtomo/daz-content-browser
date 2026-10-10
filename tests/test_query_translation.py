@@ -256,6 +256,57 @@ class TestBackendSelection:
             assert qt.translate_query("和室") == ("和室", None)
 
 
+CATALOG = qt.vocabulary_of(["Bondage Rope Set", "Red Lace Dress", "Forest cabin"])
+
+
+class TestSecondOpinion:
+    """Sugoi romanises short words (赤 'Aka'); the other backend gets them right."""
+
+    @pytest.mark.parametrize("english", ["Aka", "Mori", "Koya", "Morinokoya", "Shiro",
+                                         "Sarugutsuwa", "Kitto", "Mori Koya"])
+    def test_readings_are_unknown_romaji(self, english):
+        assert qt._is_unknown_romaji(english, CATALOG) is True
+
+    @pytest.mark.parametrize("english", [
+        "Bondage",       # romaji-shaped, but the catalogue uses it
+        "castle",        # not in the catalogue, but not romaji-shaped either
+        "red", "Dress", "Whip", "blonde hair", "A red dress.",
+    ])
+    def test_english_is_not(self, english):
+        assert qt._is_unknown_romaji(english, CATALOG) is False
+
+    def _translate(self, monkeypatch, primary, second, text="赤", known_words=CATALOG):
+        monkeypatch.setenv("QUERY_TRANSLATION", "on")
+        with patch.object(qt, "_load", return_value={"run": lambda _t: primary}), \
+             patch.object(qt, "_load_other", return_value={"run": lambda _t: second}):
+            return qt.translate_query(text, known_words)
+
+    def test_a_romanised_answer_is_replaced(self, monkeypatch):
+        assert self._translate(monkeypatch, "Aka", "red") == ("red", "赤")
+
+    def test_a_known_word_is_kept_without_asking(self, monkeypatch):
+        assert self._translate(monkeypatch, "Bondage", None, text="緊縛") == ("Bondage", "緊縛")
+
+    def test_the_second_opinion_must_not_be_romanised_too(self, monkeypatch):
+        assert self._translate(monkeypatch, "Aka", "Akai") == ("Aka", "赤")
+
+    def test_a_missing_second_backend_keeps_the_first_answer(self, monkeypatch):
+        monkeypatch.setenv("QUERY_TRANSLATION", "on")
+        with patch.object(qt, "_load", return_value={"run": lambda _t: "Aka"}), \
+             patch.object(qt, "_load_other", return_value=None):
+            assert qt.translate_query("赤", CATALOG) == ("Aka", "赤")
+
+    def test_without_a_vocabulary_there_is_no_second_opinion(self, monkeypatch):
+        assert self._translate(monkeypatch, "Aka", "red", known_words=None) == ("Aka", "赤")
+
+    def test_glossary_entries_are_taken_as_written(self, monkeypatch, tmp_path):
+        path = tmp_path / "glossary.json"
+        path.write_text(json.dumps({"terms": {"赤": "Aka"}}), encoding="utf-8")
+        monkeypatch.setenv("QUERY_GLOSSARY_PATH", str(path))
+        qt.reset_cache()
+        assert self._translate(monkeypatch, "unused", "red") == ("Aka", "赤")
+
+
 @needs_ct2
 class TestCTranslate2Backend:
     @pytest.mark.parametrize("japanese, expected", [

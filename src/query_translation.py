@@ -78,7 +78,18 @@ _JAPANESE_RE = re.compile(
 # and it bounds the worst case should the model fail to emit EOS.
 MAX_NEW_TOKENS = 64
 
+# A word made only of Japanese syllables: Aka, Mori, Koya, Morinokoya, Sarugutsuwa.
+# Shape alone is not proof — 'Bondage' parses as bo-n-da-ge — so it is only ever
+# used together with a vocabulary check (see _is_unknown_romaji).
+_ROMAJI_WORD_RE = re.compile(
+    r"(?:(?:sh|ch|ts|[kgsztdnhbpmrfjvwy])?y?[aeiou]"   # a syllable
+    r"|n(?![aeiouy])"                                  # moraic n
+    r"|[kgstpdbz](?=[kgstpdbz]))+"                      # first half of a geminate
+)
+_WORD_RE = re.compile(r"[a-z]+")
+
 _state = None
+_other_state = None
 _glossary = None
 _unavailable_logged = False
 
@@ -398,16 +409,85 @@ def _translate_cached(text: str) -> str:
     return english.strip() or text
 
 
-def translate_query(text: str):
+# ─── Second opinion for romanised output ───────────────────────────────────────
+
+def vocabulary_of(texts) -> set:
+    """The lowercase words a set of texts uses. Pass the catalogue's indexed text to
+    get the ``known_words`` translate_query() checks translations against."""
+    return {w for t in texts for w in _WORD_RE.findall((t or "").lower())}
+
+
+def _is_unknown_romaji(english: str, known_words) -> bool:
+    """True when a translation is a transliteration rather than English.
+
+    Sugoi answers short words with their reading — 赤 'Aka', 森 'Mori', 城 'Shiro',
+    森の小屋 'Morinokoya' — where fugumt gives red / forest / castle / forest
+    cabin. Searching for a reading finds nothing, and that matters most for
+    multi-word queries, whose terms are short by nature.
+
+    Both tests are needed. The shape alone would flag 'Bondage', which sugoi exists
+    to get right; the vocabulary alone would flag 'castle', which the catalogue
+    happens not to use but the embedding model still understands.
+    """
+    words = _WORD_RE.findall(english.lower())
+    return bool(words) and all(_ROMAJI_WORD_RE.fullmatch(w) for w in words) \
+        and not any(w in known_words for w in words)
+
+
+def _load_other():
+    """Loads the backend _load() did not pick, for a second opinion. None if absent."""
+    global _other_state
+    if _other_state is not None:
+        return _other_state or None
+    primary = _load()
+    _other_state = {}
+    if primary is None:
+        return None
+    backend = next(b for b in BACKENDS if b != primary["backend"])
+    model_id = DEFAULT_CT2_MODEL_ID if backend == "ctranslate2" else DEFAULT_MODEL_ID
+    directory = model_dir_for(model_id)
+    try:
+        _other_state = dict(_LOADERS[backend](directory), backend=backend, model_id=model_id)
+        logger.info(f"[translation] loaded {model_id} ({backend}) for second opinions")
+    except Exception as e:
+        logger.info(f"[translation] no second opinion available ({backend}): {e}")
+    return _other_state or None
+
+
+@functools.lru_cache(maxsize=512)
+def _second_opinion_cached(text: str):
+    state = _load_other()
+    if state is None:
+        return None
+    try:
+        return state["run"](text).strip() or None
+    except Exception as e:
+        logger.warning(f"[translation] second opinion failed for {text!r}: {e}")
+        return None
+
+
+def translate_query(text: str, known_words=None):
     """Returns (query_to_embed, translated_from) for a raw search query.
 
     ``translated_from`` is None when the text is used unchanged — not Japanese, the
     translator is off or missing, or translation failed — so callers can report what
     was actually searched without having to re-detect any of that.
+
+    ``known_words``, when given, is the catalogue's vocabulary (see vocabulary_of).
+    A model translation that is only a romanised reading none of those words match
+    is replaced by the other backend's, if that one is not romanised too. Glossary
+    entries are taken as written.
     """
     if not text or not contains_japanese(text) or not is_enabled():
         return text, None
     english = _translate_cached(text)
+    if (known_words is not None and english != text and not _glossary_hit(text)
+            and _is_unknown_romaji(english, known_words)):
+        alternative = _second_opinion_cached(text)
+        if alternative and not _is_unknown_romaji(alternative, known_words):
+            logger.info(f"[translation] {english!r} reads as romanisation, "
+                        f"using {alternative!r} instead")
+            english = alternative
     if english == text:
         return text, None
     logger.info(f"[translation] {text!r} -> {english!r}")
@@ -422,8 +502,10 @@ def active_backend() -> str:
 
 def reset_cache() -> None:
     """Drops the loaded model, the glossary and the memoised translations. For tests."""
-    global _state, _glossary, _unavailable_logged
+    global _state, _other_state, _glossary, _unavailable_logged
     _state = None
+    _other_state = None
     _glossary = None
     _unavailable_logged = False
     _translate_cached.cache_clear()
+    _second_opinion_cached.cache_clear()
