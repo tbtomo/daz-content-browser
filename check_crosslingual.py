@@ -76,7 +76,8 @@ def main() -> int:
 
     for ja, en in PAIRS:
         ja_hits = search(args.url, ja, args.max_results)
-        en_hits = search(args.url, en, args.max_results)
+        # Quoted: the English reference is one phrase, not an AND of its words.
+        en_hits = search(args.url, f'"{en}"', args.max_results)
         ja_top = [h["name"] for h in ja_hits[:TOP_N]]
         en_top = [h["name"] for h in en_hits[:TOP_N]]
         report["pairs"][ja] = {

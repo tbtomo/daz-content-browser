@@ -529,6 +529,9 @@ def run_search(request: UISearchRequest):
     Returns all matching results up to max_results in a single response. Pagination is
     left to the client — this avoids the unstable total_hits that occurs when the candidate
     pool grows with each page request.
+
+    Whitespace-separated terms are ANDed and double quotes keep a phrase together; see
+    ChromaDbManager.search().
     """
     logger.info(f"Search: query={request.query!r} filters={request.filters}")
     if APP_MODE == "demo":

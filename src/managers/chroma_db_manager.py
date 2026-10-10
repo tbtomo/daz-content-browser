@@ -2,11 +2,54 @@
 
 import chromadb
 import logging
+import math
+import os
+import re
 from typing import List, Optional
 from embedding_utils import generate_embeddings
-from query_translation import translate_query
+from query_translation import contains_japanese, translate_query, vocabulary_of
 
 logger = logging.getLogger(__name__)
+
+
+def and_term_fraction() -> float:
+    """How near each term of a multi-term search a product must be, as the fraction
+    of the catalogue it must rank within for every term (AND_TERM_FRACTION, default
+    0.25). Measured on 4,601 products: 0.10 dropped good matches whose phrasing
+    differs from the term (chairs for '椅子 木製'), 0.25 kept the phrase search's
+    top hits while cutting the list to the few hundred near every term."""
+    try:
+        value = float(os.getenv("AND_TERM_FRACTION", "0.25"))
+    except ValueError:
+        return 0.25
+    return min(max(value, 0.01), 1.0)
+
+# ASCII, curly and full-width double quotes all delimit a phrase, so a query typed
+# with a Japanese IME behaves the same as one typed on an English keyboard.
+_QUOTES = '"“”＂'
+_TERM_RE = re.compile(rf'[{_QUOTES}]([^{_QUOTES}]+)[{_QUOTES}]|(\S+)')
+
+
+def split_search_terms(prompt: str) -> List[str]:
+    """Splits a search query into the terms that must all match.
+
+    Whitespace (including the full-width space) separates terms; double quotes keep a
+    phrase together, so ``"long hair" red`` is two terms. A stray unmatched quote is
+    dropped rather than becoming part of a term. Repeated terms count once.
+    """
+    terms = []
+    for quoted, bare in _TERM_RE.findall(prompt or ""):
+        term = (quoted or bare.strip(_QUOTES)).strip()
+        if term:
+            terms.append(term)
+    return list(dict.fromkeys(terms))
+
+
+def join_search_terms(terms: List[str]) -> str:
+    """Inverse of split_search_terms: multi-word terms are quoted so the result,
+    typed back in as a query, means the same thing."""
+    return " ".join(f'"{t}"' if len(t.split()) > 1 else t for t in terms)
+
 
 def build_where_clause(
     tags: Optional[List[str]] = None,
@@ -76,6 +119,8 @@ class ChromaDbManager:
             name=self.collection_name,
             metadata={"hnsw:space": "cosine"},  # Example for 768-dim embeddings
         )
+        self._vocabulary = None
+        self._vocabulary_count = None
 
         logger.info(f"ChromaDB opened — path: {self.chroma_db_path!r}, collection: {self.collection_name!r}")
         
@@ -144,8 +189,20 @@ class ChromaDbManager:
     ):
         """Searches the ChromaDB collection with the given parameters.
 
+        A prompt of several whitespace-separated terms is an AND search. Results are
+        ranked, and scored, by the terms embedded together as one phrase — exactly as a
+        single-term search is — and a product is kept only if it is also among the
+        nearest ``AND_TERM_FRACTION`` of the catalogue for *each* term on its own.
+        Double quotes keep a phrase together as one term.
+
+        Why not score by the weakest term: single words embed poorly against these
+        short product texts ('red' alone is nearest to RuDy_Studio material packs),
+        so the weakest-term score ranked worse than the phrase on every query tried.
+        The phrase ranks well; the per-term cut is what makes it an AND. A rank
+        cut rather than a score cut, because each word's scores sit in its own band.
+
         Args:
-            prompt (str): The search prompt to generate the query embedding.
+            prompt (str): The search prompt to generate the query embedding(s).
             tags (List[str], optional): List of tags to filter by. Defaults to None.
             artists (List[str], optional): List of artists to filter by. Defaults to None.
             categories (List[str], optional): List of categories to filter by. Defaults to None.
@@ -169,11 +226,22 @@ class ChromaDbManager:
             dict: Search results including total_hits, limit, offset, and list of results.
         """
 
-        # --- 1. Translate, then Generate Query Embedding ---
-        # The index is English. A Japanese query is translated first so the embedding
+        # --- 1. Split, Translate, then Generate Query Embeddings ---
+        # The index is English. A Japanese term is translated first so the embedding
         # model compares like with like; anything else passes through untouched.
-        prompt, translated_from = translate_query(prompt)
-        query_embedding = generate_embeddings(prompt, is_query=True)
+        # Terms are translated one by one, which also lets each hit the glossary,
+        # whose entries only match a whole query. The catalogue's vocabulary lets the
+        # translator catch a term it only romanised (see translate_query).
+        terms = split_search_terms(prompt) or [prompt]
+        known_words = self._catalog_words() if contains_japanese(prompt) else None
+        embedded_terms, any_translated = [], False
+        for term in terms:
+            text, source = translate_query(term, known_words)
+            embedded_terms.append(text)
+            any_translated = any_translated or source is not None
+        phrase = " ".join(embedded_terms)
+        texts = [phrase] + (embedded_terms if len(terms) > 1 else [])
+        query_embeddings = generate_embeddings(texts, is_query=True)
 
         # --- 2. Build the Combined Metadata Filter ---
         where_filter = build_where_clause(
@@ -191,29 +259,42 @@ class ChromaDbManager:
         # --- 3. Query ChromaDB ---
 
         results = self.collection.query (
-            query_embeddings=[query_embedding.tolist()],
+            query_embeddings=query_embeddings[:1].tolist(),
             n_results=query_limit,
             where=where_filter,
-            include=["metadatas", "distances", "documents"],
+            include=["metadatas", "distances"],
         )
+        ranked = list(zip(results["ids"][0], results["distances"][0], results["metadatas"][0])) \
+            if results["ids"] else []
 
+        # --- 4. AND: Keep Products Near Every Term ---
+        if len(terms) > 1:
+            in_scope = (len(self.collection.get(where=where_filter, include=[])["ids"])
+                        if where_filter else self.collection.count())
+            per_term = max(1, math.ceil(in_scope * and_term_fraction()))
+            term_results = self.collection.query(
+                query_embeddings=query_embeddings[1:].tolist(),
+                n_results=per_term,
+                where=where_filter,
+                include=[],
+            )
+            for ids in term_results["ids"]:
+                near = set(ids)
+                ranked = [r for r in ranked if r[0] in near]
 
-        # --- 4. Post-process Results (Filtering by Score) ---
-        processed_results = []
-        if results["ids"]:
-            for i in range(len(results["ids"][0])):
-                dist = results["distances"][0][i]
-                if dist <= score_threshold:
-                    processed_results.append(
-                        {
-                            "id": results["ids"][0][i],
-                            "distance": dist,
-                            "relevance_score": round(1.0 - dist, 4),
-                            "metadata": results["metadatas"][0][i],
-                        }
-                    )
+        # --- 5. Post-process Results (Filtering by Score) ---
+        processed_results = [
+            {
+                "id": sku,
+                "distance": dist,
+                "relevance_score": round(1.0 - dist, 4),
+                "metadata": meta,
+            }
+            for sku, dist, meta in ranked
+            if dist <= score_threshold
+        ]
 
-        # --- 5. Sorting Logic ---
+        # --- 6. Sorting Logic ---
         reverse_order = sort_order == "descending"
         if sort_by != "relevance":
             # Sort by a metadata field, handling potential missing keys gracefully
@@ -223,7 +304,7 @@ class ChromaDbManager:
             )
         # Note: ChromaDB already returns results sorted by relevance (distance ascending)
 
-        # --- 6. Apply Pagination and Return ---
+        # --- 7. Apply Pagination and Return ---
         paginated_results = processed_results[offset : offset + limit]
 
         logger.debug(f"Result set size: {len(paginated_results)}")
@@ -235,9 +316,20 @@ class ChromaDbManager:
             "results": paginated_results,
             # Present only when the query was rewritten, so a caller can show what
             # was actually searched rather than what the user typed.
-            "translated_from": translated_from,
-            "query": prompt,
+            "translated_from": prompt if any_translated else None,
+            # What was embedded, quoted so it reads back as the same AND query.
+            "query": join_search_terms(embedded_terms) if len(terms) > 1 else embedded_terms[0],
+            "terms": embedded_terms,
         }
+
+    def _catalog_words(self) -> set:
+        """Every word the indexed product texts use, rebuilt when the index changes."""
+        count = self.collection.count()
+        if self._vocabulary is None or self._vocabulary_count != count:
+            documents = self.collection.get(include=["documents"])["documents"]
+            self._vocabulary = vocabulary_of(documents)
+            self._vocabulary_count = count
+        return self._vocabulary
         
 
     def get_db_stats(self):
