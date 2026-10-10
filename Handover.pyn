@@ -2,18 +2,18 @@ meta meta "この文書について":
   branch: feature/content-library-indexing
   canonical: "このファイル。Handover.html は python -m pyn html の生成物なので手で編集しない"
   embedding_model_note: "BAAI/bge-m3(1024次元・CLSプーリング)。閾値は 40〜50% が実用帯"
-  indexed_products: 4566
+  indexed_products: 4601
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "603764c(設定画面が実際のモデルと食い違わないように)"
-  last_session: "2026-09-08(コンテンツルート追加に伴う再走査、collect_untracked_dirs の実害測定)"
+  last_code_commit: "713f580(複数語の AND 検索)"
+  last_session: "2026-10-10(複数語の AND 検索、sugoi のローマ字化対策)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
   pyn_repo: "https://github.com/dataclock-jp/pyn(private。このリポジトリには同梱していない)"
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
-  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28 / 09-08"
+  sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28 / 09-08 / 10-10"
   status: implemented_verified_and_pushed
-  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 113 passed。停止中は test_api.py が落ちる"
+  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 153 passed。停止中は test_api.py が落ちる"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -73,34 +73,37 @@ section readme-start "30秒で再開するには":
   | 訳語を点検する | 不要 | `check_translation.py`(`--search` はサーバ起動が要る) |
   | 検索の品質を測る | 不要 | `check_search_quality.py` と `check_crosslingual.py`(要サーバ) |
   | コンテンツ追加後の再走査 | **必須** | ルートを DAZ Studio から引くため(@roots-source) |
-  | テストを全部通す | **必須** | 起動していれば 113 passed |
+  | テストを全部通す | **必須** | 起動していれば 153 passed |
 
   `ui/src` の submodule は**もう取得できない**(upstream のリポジトリが消えた)。UI を変えるときは `ui/dist` を直接パッチする。手順は @ui-thresholds。
 
   **UI 側で握り潰される不具合に注意。** ベンチはすべて API を直接叩くので、UI のゲートは素通りする(@ui-thresholds の最小文字数の件)。
   """
+  """
+  **複数語は AND 検索になる(2026-10-10)。** 半角・全角スペースで区切った語をすべて満たすものだけが残る。`"long hair"` のように引用符で囲めば 1 語。順位とスコアは全語をつないだフレーズで決まるので、1 語の検索は従来と同じ。詳細は @and-search。
+  """
 
 section state "現在の状態":
-  commits: 37
+  commits: 43
   content_roots: "9(dedupe 後。2026-09-08 に 4 本から増えた @roots-upi)"
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
-  indexed: 4566
+  indexed: 4601
   indexed_before: 1620
-  indexed_note: "2026-09-08 時点。買い足しや Update で動くので curl /api/v1/info が正"
+  indexed_note: "2026-10-10 時点。買い足しや Update で動くので curl /api/v1/info が正"
   newly_found: 1624
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
   pushed: true
-  tests: "113 passed(DAZ Studio 起動時)"
+  tests: "153 passed(DAZ Studio 起動時)"
   translation: "sugoi-v4(ctranslate2)+ 用語辞書 6 語。フォールバック fugumt(onnx)"
   ui_patched: true
   """
   | 指標 | 値 | 補足 |
   |---|---|---|
-  | インデックス済み | **3,248** | 2026-08-28 時点。作業前 1,620 |
+  | インデックス済み | **4,601** | 2026-10-10 時点。作業前 1,620 |
   | 内訳 | daz-store 1,624 / cms-local 43 / filesystem 1,581 | |
-  | ブランチのコミット | 37 | すべて fork に push 済み(@repo-commits) |
-  | テスト | 113 passed | DAZ Studio 停止中は `test_api.py` が落ちる(@resume の 2) |
+  | ブランチのコミット | 43 | すべて fork に push 済み(@repo-commits) |
+  | テスト | 153 passed | DAZ Studio 停止中は `test_api.py` が落ちる(@resume の 2) |
   | 埋め込みモデル | `BAAI/bge-m3` | 2026-08-27 に英語専用モデルから切替(@js-switch) |
   | 翻訳バックエンド | `sugoi-v4`(ctranslate2) | 用語辞書 6 語つき。フォールバックに `fugumt`(onnx) |
 
@@ -457,7 +460,7 @@ section repo "リポジトリと環境":
     """
   section repo-commits "コミット":
     """
-    `main` から見た `feature/content-library-indexing` の全 **37 コミット**(2026-08-28 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
+    `main` から見た `feature/content-library-indexing` の全 **43 コミット**(2026-10-10 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
 
     | SHA | 内容 |
     |---|---|
@@ -477,6 +480,8 @@ section repo "リポジトリと環境":
     | `ee43acb` | 成人向け語彙に対応した翻訳バックエンド(@nsfw-gap) |
     | `3474433` | `check_translation.py` を追加(@glossary-ops) |
     | `603764c` | 設定画面が実際のモデルと食い違わないように(@settings-truth) |
+    | `2fe7bcd` | sugoi がローマ字にした語をもう一方の翻訳器に聞き直す(@sugoi-romaji) |
+    | `713f580` | 複数語の AND 検索(@and-search) |
 
     一覧は `git log --oneline main..HEAD` で出る。
     """
@@ -537,9 +542,9 @@ section repo "リポジトリと環境":
     """
 
 section open "未着手・判断待ち":
-  section next-steps "次の一手(2026-09-08 時点)":
+  section next-steps "次の一手(2026-10-10 時点)":
     """
-    1. **日本語で変な結果が出たら @glossary-ops の手順。** `check_translation.py --search <クエリ>` で訳語と結果を見て、訳語が悪ければ `query_glossary.ja-en.json` に 1 行足す。**モデルを増やすより速くて確実**というのが @e5-trial と @llm-trial 2 回の結論
+    1. **日本語で変な結果が出たら @glossary-ops の手順。** 単語がローマ字(Aka / Mori 等)になる件は 2026-10-10 から自動で聞き直す(@sugoi-romaji)。 `check_translation.py --search <クエリ>` で訳語と結果を見て、訳語が悪ければ `query_glossary.ja-en.json` に 1 行足す。**モデルを増やすより速くて確実**というのが @e5-trial と @llm-trial 2 回の結論
     2. ~~`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理~~ **2026-09-08 に測定して決着。実害なし、現状維持(@mixed-dirs)。**フィルタを外すと既存製品の重複が 45 件生えるので、外す方が悪い
     3. **UI に `searched_as` を出すか。** API は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出せば翻訳の外しに利用者自身が気付ける。手順は @ui-thresholds
     4. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
@@ -803,6 +808,7 @@ section open "未着手・判断待ち":
       """
     convention xl-bench "日本語検索の物差し(check_crosslingual.py)":
       added: 2026-08-27
+      baseline_2026_10_10: "7.67/10(4,601 製品・sugoi。@and-search の変更前後で同値)"
       baseline_bge_m3: "6.17/10(翻訳なし)→ 9.0/10(翻訳あり)"
       commit: c72c154
       """
@@ -1023,11 +1029,74 @@ section open "未着手・判断待ち":
     **再測定するなら** 走査を 1 回まわして `collect_untracked_dirs()` のフィルタ前の統計を取り、混在ディレクトリの相対パスで `dzcontent.content` × `dzcontent.product` を引いて所有製品の SKU が `enriched_products` にあるかを見ればよい。所要は walk が約 1 分。
     """
 
+task and-search "複数語の AND 検索(2026-10-10)":
+  added: 2026-10-10
+  and_term_fraction: 0.25
+  commits: "2fe7bcd, 713f580"
+  rejected: "最も弱い語のスコアで順位付け(実データで全クエリ最悪)"
+  status: done
+  tests_added: 40
+  """
+  利用者の依頼で、スペース区切りの複数語を AND で検索できるようにした。区切りは**半角・全角スペース**で、`"long hair"` のように**ダブルクォート(全角 `＂` や `“”` も可)で囲めば 1 語**。閉じていない引用符は捨てる。
+
+  **仕組み。** 意味検索なので「語を含む」ではなく「どの語にも近い」で AND を作っている。
+
+  1. 各語を個別に翻訳する(用語辞書はクエリ全体の完全一致なので、語単位にすると当たりやすくなる)
+  2. **順位とスコアは全語をつないだ 1 フレーズの埋め込み**で決める。1 語の検索は従来と完全に同じで、UI の Min match の目盛り(@ui-thresholds)も意味が変わらない
+  3. そのうえで、**各語単独でカタログの上位 25% に入らない製品を落とす**(`.env` の `AND_TERM_FRACTION`、既定 0.25)。カテゴリ等のフィルタがあるときはその範囲の 25%
+
+  `/api/v1/search` の `searched_as` は翻訳が起きたとき `"Japanese-style room" Background` のように語単位で返る(そのまま貼り直すと同じ検索になる形)。`/api/v1/query` の結果には `terms` も付く。
+  """
+  """
+  **最初に作った「最も弱い語のスコアで順位付け」は実データで不採用にした。** 4,601 製品・8 クエリで比較した結果:
+
+  | 方式 | 結果 |
+  |---|---|
+  | 最弱語のスコア | 全クエリで最悪。`red` 単独の近傍が RuDy_Studio のマテリアル集になるなど、**単語 1 つの埋め込みは短い製品テキストに対して弱い** |
+  | フレーズ埋め込みのみ(従来) | 上位の質は最良。ただし AND ではない |
+  | フレーズ順位 + 各語の上位 10% | 厳しすぎる。`椅子 木製` で椅子が落ちる |
+  | **フレーズ順位 + 各語の上位 25%(採用)** | 上位はフレーズ検索とほぼ同じまま、件数が 300〜800 に絞れる |
+  | 字句一致(全語を含む) | 製品テキストが平均 360 文字と短く、ほとんど 0 件 |
+
+  AND らしさが出た例: `sci-fi corridor` はフレーズ検索だと普通のアパートの廊下が上位に来るが、AND では Abyss / Future Underground Tunnel / Sci-Fi Core Vignette。`和室 背景` は Japanese Onsen / Japanese Spa and Hot Spring / japanese stay apartment。
+
+  **スコアの閾値ではなく順位で切るのは、語ごとにスコアの帯が違うから**(`dress` の上位は 0.57、`red` は 0.44 程度)。
+  """
+  """
+  **色・素材のような属性語は効きが限られる。** カタログのテキストに `red` を含む製品は 30 件しかない。`red dress` の上位は妥当(Alice Rebel / Meiying Chinese Outfit / Lace Dress)だが、カタログに書かれていない属性はどう検索しても出ない。
+
+  `check_crosslingual.py` は英語側の基準クエリを**引用符で囲んで送る**ように変えた(基準はフレーズであって AND ではないため)。日本語側はスペースを含まないので影響しない。平均一致は **7.67/10** で、**変更前のコードでも同値**だった。@xl-bench の 8.33 からの低下はカタログが 3,248 → 4,601 に増えたことによるもので、本変更の影響ではない。
+  """
+  bug sugoi-romaji "sugoi が短い語をローマ字にする(2026-10-10 対策)":
+    commit: 2fe7bcd
+    found_by: "AND 検索の実測"
+    status: fixed
+    """
+    AND 検索は語が短くなるので、@nsfw-gap で数語だけ知られていた **sugoi のローマ字化**が一気に表面化した。1 語で検索した場合も以前から同じ症状だった(「森」が `Mori` になり、森が出ない)。
+
+    | 入力 | sugoi | fugumt |
+    |---|---|---|
+    | 赤 | Aka | red |
+    | 森 | Mori | forest |
+    | 小屋 | Koya | hut |
+    | 城 | Shiro | castle |
+    | 夜 | Yoru | night |
+    | 森の小屋 | Morinokoya | forest cabin |
+
+    **対策:翻訳結果が「ローマ字の形をしていて、かつカタログに 1 語も現れない」ときだけ、もう一方のバックエンドに聞き直す。** 聞き直した答えもローマ字なら元のまま使う。
+
+    - 形だけで判定すると `Bondage`(bo-n-da-ge)まで引っかかり、sugoi を入れた意味が無くなる。`bondage` はカタログに 114 回出るので対象外になる
+    - 語彙だけで判定すると `castle`(カタログに 0 回)まで疑われる
+    - ローマ字化された 9 語(Aka / Mori / Koya / Shiro / Yoru / Nawa / Morinokoya / Wamuro / Sarugutsuwa)は、いずれもカタログに 0 回
+
+    語彙はカタログの埋め込みテキストから作り、件数が変わったら作り直す。日本語を含むクエリのときだけ作るので、英語検索のコストは変わらない。2 つ目のバックエンドは必要になったときに読み込む(初回だけ数秒)。用語辞書のエントリは書かれたとおりに使う。
+    """
+
 section resume "再開手順":
   """
   1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(2026-08-28 時点で origin と同期済み)
 
-  2. **DAZ Studio を起動するかどうかで、その日にできることが決まる。** 停止中は `get_content_roots()` も `get_all_content_paths()` も引けないので、**コンテンツを追加したときの再走査ができない**(@roots-source)。`tests/test_api.py` が落ちるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237`)で、コードの不具合ではない。起動していれば 113 passed。検索まわりの作業だけなら DAZ Studio は不要
+  2. **DAZ Studio を起動するかどうかで、その日にできることが決まる。** 停止中は `get_content_roots()` も `get_all_content_paths()` も引けないので、**コンテンツを追加したときの再走査ができない**(@roots-source)。`tests/test_api.py` が落ちるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237`)で、コードの不具合ではない。起動していれば 153 passed。検索まわりの作業だけなら DAZ Studio は不要
 
   3. **モデルが 3 つ要る。** `models/` は git に入らないので、クローンし直した直後は空。揃っていないと起動時に落ちるか、日本語検索が黙って劣化する
 
@@ -1043,7 +1112,7 @@ section resume "再開手順":
 
      ```bash
      python check_search_quality.py     # 件数と応答時間。閾値の分布を見る
-     python check_crosslingual.py       # 日本語が英語版と同じものを返すか(基準 8.33/10)
+     python check_crosslingual.py       # 日本語が英語版と同じものを返すか(4,601 製品で 7.67/10)
      python check_translation.py 和室   # 訳語そのものを見る(--search で結果も)
      ```
 
