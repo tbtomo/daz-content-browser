@@ -5,7 +5,7 @@ meta meta "この文書について":
   indexed_products: 4601
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "713f580(複数語の AND 検索)"
+  last_code_commit: "ff92206(検索欄の下に AND 検索の使い方を表示)"
   last_session: "2026-10-10(複数語の AND 検索、sugoi のローマ字化対策)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
@@ -84,7 +84,7 @@ section readme-start "30秒で再開するには":
   """
 
 section state "現在の状態":
-  commits: 43
+  commits: 45
   content_roots: "9(dedupe 後。2026-09-08 に 4 本から増えた @roots-upi)"
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 4601
@@ -102,7 +102,7 @@ section state "現在の状態":
   |---|---|---|
   | インデックス済み | **4,601** | 2026-10-10 時点。作業前 1,620 |
   | 内訳 | daz-store 1,624 / cms-local 43 / filesystem 1,581 | |
-  | ブランチのコミット | 43 | すべて fork に push 済み(@repo-commits) |
+  | ブランチのコミット | 45 | すべて fork に push 済み(@repo-commits) |
   | テスト | 153 passed | DAZ Studio 停止中は `test_api.py` が落ちる(@resume の 2) |
   | 埋め込みモデル | `BAAI/bge-m3` | 2026-08-27 に英語専用モデルから切替(@js-switch) |
   | 翻訳バックエンド | `sugoi-v4`(ctranslate2) | 用語辞書 6 語つき。フォールバックに `fugumt`(onnx) |
@@ -111,7 +111,7 @@ section state "現在の状態":
 
   作業ツリーはクリーン、stash なし。
 
-  **UI は当初「一切改造しない」方針だったが、現在は `ui/dist` を 3 回パッチしている**(@ui-thresholds)。`ui/src` の submodule が取得できなくなった(upstream のリポジトリが消えた)ため、UI を変える手段が minify 済みバンドルの直接編集しか無くなったのが理由。当初の設計判断は @design、その前提が崩れた経緯は @limits。
+  **UI は当初「一切改造しない」方針だったが、現在は `ui/dist` を 4 回パッチしている**(@ui-thresholds)。`ui/src` の submodule が取得できなくなった(upstream のリポジトリが消えた)ため、UI を変える手段が minify 済みバンドルの直接編集しか無くなったのが理由。当初の設計判断は @design、その前提が崩れた経緯は @limits。
   """
 
 section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
@@ -433,7 +433,7 @@ section bugs "途中で直した既存バグ":
 
 section verify "検証したこと":
   """
-  **これは 2026-08-16〜18 の本体実装を検証した記録。** 以降のセッションで前提が変わった点は各節に分かれている(検証当時 3,239 製品・41 テスト・UI 無改造だったが、現在は 3,244 製品・113 テスト・`ui/dist` を 3 回パッチ済み)。
+  **これは 2026-08-16〜18 の本体実装を検証した記録。** 以降のセッションで前提が変わった点は各節に分かれている(検証当時 3,239 製品・41 テスト・UI 無改造だったが、現在は 4,601 製品・153 テスト・`ui/dist` を 4 回パッチ済み)。
 
   - **テスト** — `pytest tests/` 41 件 green(新規 12 件を含む)。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認
   - **実データでの ETL** — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決
@@ -460,7 +460,7 @@ section repo "リポジトリと環境":
     """
   section repo-commits "コミット":
     """
-    `main` から見た `feature/content-library-indexing` の全 **43 コミット**(2026-10-10 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
+    `main` から見た `feature/content-library-indexing` の全 **45 コミット**(2026-10-10 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
 
     | SHA | 内容 |
     |---|---|
@@ -482,6 +482,7 @@ section repo "リポジトリと環境":
     | `603764c` | 設定画面が実際のモデルと食い違わないように(@settings-truth) |
     | `2fe7bcd` | sugoi がローマ字にした語をもう一方の翻訳器に聞き直す(@sugoi-romaji) |
     | `713f580` | 複数語の AND 検索(@and-search) |
+    | `ff92206` | 検索欄の下に AND 検索の使い方を表示(@and-search) |
 
     一覧は `git log --oneline main..HEAD` で出る。
     """
@@ -723,7 +724,7 @@ section open "未着手・判断待ち":
       @bug-search-cap に書いた「50%+ で 3,236 件、70%+ で 2 件」という目安は、予告どおり完全に無効になった。
       """
     task ui-thresholds "UI のパッチ(Min match の目盛りと最小文字数)":
-      commits: "953c59d, aace1c8, 7ff790a"
+      commits: "953c59d, aace1c8, 7ff790a, ff92206"
       ladder: "Any / 40%+ / 45%+ / 50%+ / 60%+"
       status: done
       ui_src_available: false
@@ -764,6 +765,16 @@ section open "未着手・判断待ち":
       ブラウザで確認済み。「和室」で 3,244 件が返り、上位は HY ClassRoom 60% / Japanese Restaurant 59% / Japanese Onsen 59% / Japanese Neat Classroom 59% / XI Japanese Bath 58%。
 
       **この種の「UI 側で握り潰されている」不具合は、サーバ側をいくら測っても見つからない。** @xl-bench も `check_search_quality.py` も API を直接叩くので、UI のゲートは素通りする。日本語まわりで「出ない」と言われたら、まず UI が投げているかを疑うこと。
+      """
+      """
+      **4 回目のパッチ:AND 検索の使い方(2026-10-10)。** 利用者の依頼で、検索欄と Min match の間に常時表示の説明を 2 行足した(@and-search)。使い方を忘れないための対策なので、ツールチップではなく常に見える形にしてある。
+
+      ```
+      AND 検索: 語をスペース(全角も可)で区切ると、すべての語に近い製品だけを表示します。例: 和室 背景 / dress red
+      スペースを含む語は "long hair" female のように "" で囲むと 1 語として扱います(囲まないと long と hair の AND になります)。
+      ```
+
+      差し込み位置は検索欄コンポーネントの入力行の直後(クリアボタン `Vt` の後、`n&&` で Min match 行を出す直前)。**使える Tailwind クラスはビルド済み CSS に入っているものだけ**(`text-xs` / `text-muted` / `text-secondary` / `font-medium` / `leading-relaxed` などは有る。`font-mono` や `gap-0.5` は無い)。新しいクラスを書いても効かないので、`index-*.css` を grep してから使うこと。バンドルは `index-Pd5SuPWp.js` に改名済み。
       """
     task e5-trial "multilingual-e5-large を試したが不採用(2026-08-27)":
       mean_overlap_bge_m3: 6.17
@@ -1066,6 +1077,9 @@ task and-search "複数語の AND 検索(2026-10-10)":
   **色・素材のような属性語は効きが限られる。** カタログのテキストに `red` を含む製品は 30 件しかない。`red dress` の上位は妥当(Alice Rebel / Meiying Chinese Outfit / Lace Dress)だが、カタログに書かれていない属性はどう検索しても出ない。
 
   `check_crosslingual.py` は英語側の基準クエリを**引用符で囲んで送る**ように変えた(基準はフレーズであって AND ではないため)。日本語側はスペースを含まないので影響しない。平均一致は **7.67/10** で、**変更前のコードでも同値**だった。@xl-bench の 8.33 からの低下はカタログが 3,248 → 4,601 に増えたことによるもので、本変更の影響ではない。
+  """
+  """
+  WebUI の検索欄の下に、この使い方(スペース区切りで AND、スペースを含む語は `""` で囲む)を常時表示している(@ui-thresholds の 4 回目のパッチ)。UI から `和室 背景` で 334 件、1 位 Japanese Onsen になることをブラウザで確認済み。
   """
   bug sugoi-romaji "sugoi が短い語をローマ字にする(2026-10-10 対策)":
     commit: 2fe7bcd
