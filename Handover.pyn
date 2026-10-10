@@ -5,7 +5,7 @@ meta meta "この文書について":
   indexed_products: 4601
   indexed_products_before: 1620
   language: ja
-  last_code_commit: "ff92206(検索欄の下に AND 検索の使い方を表示)"
+  last_code_commit: "9e348a6(検索欄の下に語ごとの訳語を表示)"
   last_session: "2026-10-10(複数語の AND 検索、sugoi のローマ字化対策)"
   origin: "https://github.com/tbtomo/daz-content-browser.git(fork / public)"
   project: "VAB Content Library 対応"
@@ -13,7 +13,7 @@ meta meta "この文書について":
   resume_entry_point: "@readme-start を読む → @next-steps の 1 番から"
   sessions: "2026-08-16 〜 08-18 / 追記 08-25 / 08-27(3 回)/ 08-28 / 09-08 / 10-10"
   status: implemented_verified_and_pushed
-  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 153 passed。停止中は test_api.py が落ちる"
+  test_note: "DAZ Studio(CMS PostgreSQL)起動中なら 155 passed。停止中は test_api.py が落ちる"
   upstream: "https://github.com/bluemoonfoundry/daz-content-browser.git(本家 / AGPL-3.0)"
   workdir: "D:\\OtherApps\\daz-content-browser"
   """
@@ -54,7 +54,7 @@ section readme-start "30秒で再開するには":
   2. **日本語クエリを英訳してから埋め込む**(@jt-impl)。インデックスが英語なので英語で引くのが一番強い
   3. 訳語を間違える語は**用語辞書**で直接置き換える(@glossary-ops)
 
-  「和室」でも「緊縛」でも意図した製品が出る。訳語がおかしいと思ったら `python check_translation.py --search <クエリ>`。
+  「和室」でも「緊縛」でも意図した製品が出る。**どう訳されたかは検索欄のすぐ下に「訳語: 和室 → Japanese-style room」と出る**(2026-10-10〜)。もっと詳しく見るなら `python check_translation.py --search <クエリ>`。
 
   **モデルは 3 つ要る。** どれも `models/` に置き、`git` には入らない。クローンし直した直後は揃えること。
 
@@ -73,7 +73,7 @@ section readme-start "30秒で再開するには":
   | 訳語を点検する | 不要 | `check_translation.py`(`--search` はサーバ起動が要る) |
   | 検索の品質を測る | 不要 | `check_search_quality.py` と `check_crosslingual.py`(要サーバ) |
   | コンテンツ追加後の再走査 | **必須** | ルートを DAZ Studio から引くため(@roots-source) |
-  | テストを全部通す | **必須** | 起動していれば 153 passed |
+  | テストを全部通す | **必須** | 起動していれば 155 passed |
 
   `ui/src` の submodule は**もう取得できない**(upstream のリポジトリが消えた)。UI を変えるときは `ui/dist` を直接パッチする。手順は @ui-thresholds。
 
@@ -84,7 +84,7 @@ section readme-start "30秒で再開するには":
   """
 
 section state "現在の状態":
-  commits: 45
+  commits: 47
   content_roots: "9(dedupe 後。2026-09-08 に 4 本から増えた @roots-upi)"
   embedding_model: "BAAI/bge-m3(2026-08-27 に切替。e5 も試したが不採用 @e5-trial)"
   indexed: 4601
@@ -94,7 +94,7 @@ section state "現在の状態":
   newly_found_cms_local: 43
   newly_found_filesystem: 1581
   pushed: true
-  tests: "153 passed(DAZ Studio 起動時)"
+  tests: "155 passed(DAZ Studio 起動時)"
   translation: "sugoi-v4(ctranslate2)+ 用語辞書 6 語。フォールバック fugumt(onnx)"
   ui_patched: true
   """
@@ -102,8 +102,8 @@ section state "現在の状態":
   |---|---|---|
   | インデックス済み | **4,601** | 2026-10-10 時点。作業前 1,620 |
   | 内訳 | daz-store 1,624 / cms-local 43 / filesystem 1,581 | |
-  | ブランチのコミット | 45 | すべて fork に push 済み(@repo-commits) |
-  | テスト | 153 passed | DAZ Studio 停止中は `test_api.py` が落ちる(@resume の 2) |
+  | ブランチのコミット | 47 | すべて fork に push 済み(@repo-commits) |
+  | テスト | 155 passed | DAZ Studio 停止中は `test_api.py` が落ちる(@resume の 2) |
   | 埋め込みモデル | `BAAI/bge-m3` | 2026-08-27 に英語専用モデルから切替(@js-switch) |
   | 翻訳バックエンド | `sugoi-v4`(ctranslate2) | 用語辞書 6 語つき。フォールバックに `fugumt`(onnx) |
 
@@ -111,7 +111,7 @@ section state "現在の状態":
 
   作業ツリーはクリーン、stash なし。
 
-  **UI は当初「一切改造しない」方針だったが、現在は `ui/dist` を 4 回パッチしている**(@ui-thresholds)。`ui/src` の submodule が取得できなくなった(upstream のリポジトリが消えた)ため、UI を変える手段が minify 済みバンドルの直接編集しか無くなったのが理由。当初の設計判断は @design、その前提が崩れた経緯は @limits。
+  **UI は当初「一切改造しない」方針だったが、現在は `ui/dist` を 5 回パッチしている**(@ui-thresholds)。`ui/src` の submodule が取得できなくなった(upstream のリポジトリが消えた)ため、UI を変える手段が minify 済みバンドルの直接編集しか無くなったのが理由。当初の設計判断は @design、その前提が崩れた経緯は @limits。
   """
 
 section roots "コンテンツルートの棚卸し(2026-08-25 追記)":
@@ -433,7 +433,7 @@ section bugs "途中で直した既存バグ":
 
 section verify "検証したこと":
   """
-  **これは 2026-08-16〜18 の本体実装を検証した記録。** 以降のセッションで前提が変わった点は各節に分かれている(検証当時 3,239 製品・41 テスト・UI 無改造だったが、現在は 4,601 製品・153 テスト・`ui/dist` を 4 回パッチ済み)。
+  **これは 2026-08-16〜18 の本体実装を検証した記録。** 以降のセッションで前提が変わった点は各節に分かれている(検証当時 3,239 製品・41 テスト・UI 無改造だったが、現在は 4,601 製品・155 テスト・`ui/dist` を 5 回パッチ済み)。
 
   - **テスト** — `pytest tests/` 41 件 green(新規 12 件を含む)。合成ツリーでグルーピング・ラッパー除去・入れ子ルート除去・SKU 安定性を確認
   - **実データでの ETL** — cms-local 43 製品すべて取り込み、43/43 でサムネイル解決
@@ -460,7 +460,7 @@ section repo "リポジトリと環境":
     """
   section repo-commits "コミット":
     """
-    `main` から見た `feature/content-library-indexing` の全 **45 コミット**(2026-10-10 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
+    `main` から見た `feature/content-library-indexing` の全 **47 コミット**(2026-10-10 時点)。すべて fork(`origin`)に push 済み。文書だけのコミットは省いてある。
 
     | SHA | 内容 |
     |---|---|
@@ -483,6 +483,7 @@ section repo "リポジトリと環境":
     | `2fe7bcd` | sugoi がローマ字にした語をもう一方の翻訳器に聞き直す(@sugoi-romaji) |
     | `713f580` | 複数語の AND 検索(@and-search) |
     | `ff92206` | 検索欄の下に AND 検索の使い方を表示(@and-search) |
+    | `9e348a6` | 検索欄の下に語ごとの訳語を表示(@ui-thresholds) |
 
     一覧は `git log --oneline main..HEAD` で出る。
     """
@@ -547,7 +548,7 @@ section open "未着手・判断待ち":
     """
     1. **日本語で変な結果が出たら @glossary-ops の手順。** 単語がローマ字(Aka / Mori 等)になる件は 2026-10-10 から自動で聞き直す(@sugoi-romaji)。 `check_translation.py --search <クエリ>` で訳語と結果を見て、訳語が悪ければ `query_glossary.ja-en.json` に 1 行足す。**モデルを増やすより速くて確実**というのが @e5-trial と @llm-trial 2 回の結論
     2. ~~`collect_untracked_dirs()` の「tracked が 1 以上のディレクトリを丸ごと捨てる」処理~~ **2026-09-08 に測定して決着。実害なし、現状維持(@mixed-dirs)。**フィルタを外すと既存製品の重複が 45 件生えるので、外す方が悪い
-    3. **UI に `searched_as` を出すか。** API は日本語クエリを何に翻訳したかを返しているが、ビルド済み UI は表示しない。出せば翻訳の外しに利用者自身が気付ける。手順は @ui-thresholds
+    3. ~~UI に `searched_as` を出すか~~ **2026-10-10 に実装。** 検索欄の下に語ごとの訳語を出している(@ui-thresholds の 5 回目)
     4. **既存 fs 製品の `content_dirs` は差分実行では更新されない。** コンテンツを別ルートへ追加・移動したときは `python vab.py load --phase scan --all` が要る
     5. **退避したベクトルと使わないモデルを残すか捨てるか。** `chroma_db.bge-large-en-v1.5.bak/`(31MB)、`chroma_db.multilingual-e5-large.bak/`(32MB)、`models/bge-large-en-v1.5/`(1.3GB)、`models/multilingual-e5-large/`(2.1GB)。現行構成で確定なら消してよい。`models/fugumt-ja-en/`(361MB)は sugoi のフォールバック先なので残すこと
     """
@@ -724,7 +725,7 @@ section open "未着手・判断待ち":
       @bug-search-cap に書いた「50%+ で 3,236 件、70%+ で 2 件」という目安は、予告どおり完全に無効になった。
       """
     task ui-thresholds "UI のパッチ(Min match の目盛りと最小文字数)":
-      commits: "953c59d, aace1c8, 7ff790a, ff92206"
+      commits: "953c59d, aace1c8, 7ff790a, ff92206, 9e348a6"
       ladder: "Any / 40%+ / 45%+ / 50%+ / 60%+"
       status: done
       ui_src_available: false
@@ -775,6 +776,17 @@ section open "未着手・判断待ち":
       ```
 
       差し込み位置は検索欄コンポーネントの入力行の直後(クリアボタン `Vt` の後、`n&&` で Min match 行を出す直前)。**使える Tailwind クラスはビルド済み CSS に入っているものだけ**(`text-xs` / `text-muted` / `text-secondary` / `font-medium` / `leading-relaxed` などは有る。`font-mono` や `gap-0.5` は無い)。新しいクラスを書いても効かないので、`index-*.css` を grep してから使うこと。バンドルは `index-Pd5SuPWp.js` に改名済み。
+      """
+      """
+      **5 回目のパッチ:語ごとの訳語(2026-10-10)。** 利用者の依頼で、日本語の語がどう訳されたかを検索欄のすぐ下に出すようにした(@next-steps の 3 番)。訳された語があるときだけ現れる。
+
+      ```
+      訳語: 和室 → Japanese-style room ・ 背景 → Background
+      ```
+
+      `searched_as`(`"Japanese-style room" Background`)だけでは、どの語が何になったか対応が取れない。そこでサーバ側で `/api/v1/search` に **`translations`**(訳された語だけの `{term, english}` の配列)を足した。
+
+      UI 側は、検索欄コンポーネント(`Mr`)が結果一覧(`Gr`)と**同じクエリキー**で `useQuery` を `enabled:false` で呼び、キャッシュを読むだけにしている。**リクエストは増えない**し、結果が届くまでは何も出ない。キーは `[`search`,{query, filters, limit, min_relevance}]` で、`Gr` 側の組み立てと揃えておかないと永遠に空になる点に注意(`Gr` を書き換えるときは `Mr` 側も直す)。バンドルは `index-vEDYRsJA.js`。
       """
     task e5-trial "multilingual-e5-large を試したが不採用(2026-08-27)":
       mean_overlap_bge_m3: 6.17
@@ -1110,7 +1122,7 @@ section resume "再開手順":
   """
   1. `cd D:\OtherApps\daz-content-browser` して `git status`。`feature/content-library-indexing` にいて、クリーンなはず(2026-08-28 時点で origin と同期済み)
 
-  2. **DAZ Studio を起動するかどうかで、その日にできることが決まる。** 停止中は `get_content_roots()` も `get_all_content_paths()` も引けないので、**コンテンツを追加したときの再走査ができない**(@roots-source)。`tests/test_api.py` が落ちるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237`)で、コードの不具合ではない。起動していれば 153 passed。検索まわりの作業だけなら DAZ Studio は不要
+  2. **DAZ Studio を起動するかどうかで、その日にできることが決まる。** 停止中は `get_content_roots()` も `get_all_content_paths()` も引けないので、**コンテンツを追加したときの再走査ができない**(@roots-source)。`tests/test_api.py` が落ちるのも同じ理由(CMS PostgreSQL `127.0.0.1:17237`)で、コードの不具合ではない。起動していれば 155 passed。検索まわりの作業だけなら DAZ Studio は不要
 
   3. **モデルが 3 つ要る。** `models/` は git に入らないので、クローンし直した直後は空。揃っていないと起動時に落ちるか、日本語検索が黙って劣化する
 
